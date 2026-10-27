@@ -1,0 +1,13 @@
+// Skema Prisma untuk capstone-backend.
+// Belum ada model; tabel ditambahkan setelah desain kolom Accounts + Students (D26).
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "ts"
+}
+
+datasource db {
+  provider = "mysql"
+}
