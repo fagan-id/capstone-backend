@@ -55,7 +55,6 @@ model kelas {
   siswa   siswa[]
 
   @@unique([sekolah_id, tahun_ajaran, nama])
-  // Target composite FK siswa (kelas_id, sekolah_id): kelas siswa harus milik sekolah yang sama.
   @@unique([id, sekolah_id])
 }
 
