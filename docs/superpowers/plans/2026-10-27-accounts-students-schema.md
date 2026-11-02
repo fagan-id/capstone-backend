@@ -25,7 +25,7 @@
 ## Review Focus
 
 1. **A student put in a class of another school:** rejected by the database, not only by future API code. Test in Task 1.
-2. **Same email with different capitalization** (`Admin@…` vs `admin@…`): rejected as a duplicate. Test in Task 1.
+2. **Same email or school username with different capitalization** (`Admin@…` vs `admin@…`, `SD_Uji` vs `sd_uji`): rejected as a duplicate. Tests in Task 1.
 3. **NISN/NPSN with leading zeros** (`0012345678`): stored and read back unchanged. Test in Task 1.
 4. **Seed run twice, in production, or without `SEED_PASSWORD`:** second run adds nothing; production and missing/short password refuse with an Indonesian message naming the cause. Tests in Task 2.
 5. **Existing, already initialized volume:** gets the shadow grant without losing data; a fresh volume gets it from the init script. Manual checks in Task 1.
@@ -56,6 +56,7 @@
 | `NISN unik di seluruh sistem` | schools A and B, a class in each, siswa with NISN X in A | create siswa with NISN X in B | rejects `{ code: "P2002" }` |
 | `email sekolah unik tanpa membedakan huruf besar` | school with `email: "admin@uji.test"` | create school with `email: "Admin@Uji.test"` | rejects `{ code: "P2002" }` |
 | `email super admin unik tanpa membedakan huruf besar` | super_admin `x@uji.test` | create `X@UJI.test` | rejects `{ code: "P2002" }` |
+| `username sekolah unik tanpa membedakan huruf besar` | school with `username: "sd_uji"` | create school (other NPSN and email) with `username: "SD_Uji"` | rejects `{ code: "P2002" }` |
 | `NPSN unik` | school NPSN `99990001` | second school, same NPSN | rejects `{ code: "P2002" }` |
 | `nama kelas unik per sekolah dan tahun ajaran` | schools A and B, class `4A` `2026/2027` in A | (a) same again → rejects `{ code: "P2002" }`; (b) `4A` `2027/2028` in A → resolves; (c) `4A` `2026/2027` in school B → resolves |
 | `kelas siswa harus milik sekolah yang sama` | schools A and B, class in B | create siswa with `sekolah_id: A`, `kelas_id: <class in B>` | rejects `{ code: "P2003" }` |
@@ -73,6 +74,7 @@ Expected: FAIL, every test errors because the client has no models yet (e.g. `Ca
 Columns exactly as the spec's Tables section. Key lines the spec implies:
 - `kelas`: `@@unique([sekolah_id, tahun_ajaran, nama])` and `@@unique([id, sekolah_id])` (target of the composite FK); `tingkat Int @db.UnsignedTinyInt`.
 - `siswa`: `kelas kelas @relation(fields: [kelas_id, sekolah_id], references: [id, sekolah_id], onDelete: Restrict)`, `@@index([sekolah_id, nama])`, `tanggal_lahir DateTime @db.Date`.
+- `sekolah`: `username String @unique @db.VarChar(50)` next to `email`.
 - String lengths: `@db.Char(8)` npsn, `@db.Char(10)` nisn, `@db.Char(9)` tahun_ajaran, `@db.VarChar(n)` elsewhere per spec.
 
 Replace the header comment ("Belum ada model…") with one line naming the spec. Run `npx prisma validate`. Expected: `The schema at prisma\schema.prisma is valid`.
@@ -117,7 +119,7 @@ Expected: `Your database is now in sync with your schema`; `prisma/migrations/<t
 - [ ] **Step 8: Run all tests to verify they pass**
 
 Run: `npm run test:db`, then `npm test`
-Expected: 10/10 db tests pass; then in phpMyAdmin or via SQL, `SELECT COUNT(*)` on all four tables is 0 (rollback left nothing). `npm test`: 13/13.
+Expected: 11/11 db tests pass; then in phpMyAdmin or via SQL, `SELECT COUNT(*)` on all four tables is 0 (rollback left nothing). `npm test`: 13/13.
 
 ---
 
@@ -131,7 +133,7 @@ Expected: 10/10 db tests pass; then in phpMyAdmin or via SQL, `SELECT COUNT(*)` 
 - Consumes: models from Task 1, `dalamTransaksiBatal` (Task 1), `prisma` (scaffold).
 - Produces:
   - `buatDataSeed(env: Record<string, string|undefined>) -> Promise<DataSeed>` (named export, `prisma/seedData.js`). Throws `Error` when `NODE_ENV === "production"` (`"Seed tidak boleh dijalankan saat NODE_ENV=production."`), when `SEED_PASSWORD` is missing or only spaces (message contains `SEED_PASSWORD` and `.env`), or shorter than 8 characters (`"SEED_PASSWORD minimal 8 karakter."`). Hashes with `bcrypt.hash(password, 10)`.
-  - `DataSeed = { superAdmin: { nama, email, password_hash }, sekolah: { npsn, nama, alamat, email, password_hash }, kelas: { nama, tingkat, tahun_ajaran }, siswa: Array<{ nisn, nama, tanggal_lahir: Date, jenis_kelamin }> }`
+  - `DataSeed = { superAdmin: { nama, email, password_hash }, sekolah: { npsn, nama, alamat, email, username, password_hash }, kelas: { nama, tingkat, tahun_ajaran }, siswa: Array<{ nisn, nama, tanggal_lahir: Date, jenis_kelamin }> }`
   - `jalankanSeed(db, data: DataSeed) -> Promise<void>` (named export, same file). `db` is a Prisma client or transaction client. Upserts with `update: {}`: super_admin by `email`, sekolah by `npsn`, kelas by `sekolah_id_tahun_ajaran_nama`, each siswa by `nisn`.
   - `prisma/seed.js`: imports `prisma`, runs `jalankanSeed(prisma, await buatDataSeed(process.env))`, logs success with `logger.success`, on error logs with `logger.error` and sets `process.exitCode = 1`; always `prisma.$disconnect()`.
 
@@ -140,7 +142,7 @@ Demo values (placeholders, fake identifiers):
 | entity | values |
 |--------|--------|
 | super_admin | `Super Admin Demo`, `superadmin@demo.test` |
-| sekolah | NPSN `00000001`, `SD Demo`, `Jl. Contoh No. 1`, `sekolah@demo.test` |
+| sekolah | NPSN `00000001`, `SD Demo`, `Jl. Contoh No. 1`, `sekolah@demo.test`, username `sd_demo` |
 | kelas | `4A`, tingkat 4, `2026/2027` |
 | siswa | `0000000001`, `Siswa Demo Satu`, `2017-03-14`, `L`; `0000000002`, `Siswa Demo Dua`, `2017-08-02`, `P` |
 
@@ -188,14 +190,14 @@ Expected: the new test FAILS only if Step 3 is not wired correctly; if it passes
 - `prisma.config.js`: `migrations: { path: "prisma/migrations", seed: "tsx prisma/seed.js" }`.
 - `package.json`: `"db:seed": "prisma db seed"`.
 - `.env.example`: add a blank line then `SEED_PASSWORD=ganti_password_seed_ini` (with a comment line `# Password akun demo dari seed (minimal 8 karakter)`).
-- `README.md` setup block: after `npm run docker:up` add `npm run db:migrate` + `npm run db:generate` + `npm run db:seed`; one line on the existing-volume grant command from the script header; list `npm run db:seed` and `npm run test:db` (needs MySQL running) in the scripts table; list the two demo emails and say their password is `SEED_PASSWORD`.
+- `README.md` setup block: after `npm run docker:up` add `npm run db:migrate` + `npm run db:generate` + `npm run db:seed`; one line on the existing-volume grant command from the script header; list `npm run db:seed` and `npm run test:db` (needs MySQL running) in the scripts table; list the two demo emails plus the school username `sd_demo` and say their password is `SEED_PASSWORD`.
 
 - [ ] **Step 7: Verify end to end**
 
 | command | expected |
 |---------|----------|
 | `npm test` | 18/18 |
-| `npm run test:db` | 11/11; the four tables still empty afterwards |
+| `npm run test:db` | 12/12; the four tables still empty afterwards |
 | `.env` has `SEED_PASSWORD`? (check `set`/`EMPTY` only) | if `EMPTY` or missing: run `npm run db:seed` once to see it refuse with the `SEED_PASSWORD` message, then stop and tell the user to add it. Do not invent a password for real demo accounts. |
 | if set: `npm run db:seed` twice | both succeed; afterwards counts are 1/1/1/2 |
 | `NODE_ENV=production` for one process, `npm run db:seed` | refuses, exit code 1, no rows changed |
@@ -207,6 +209,7 @@ Stop the dev server afterwards.
 
 ## Left for later plans
 
-- Login API, JWT, `bcrypt.compare` on `password_hash`, raising the cost factor if needed.
+- Login API, JWT, `bcrypt.compare` on `password_hash`, raising the cost factor if needed. School login takes one identifier: contains `@` → match `email`, otherwise `username` (D40).
+- Username format validation in the API (no `@`, e.g. letters, digits, `_`, `.`, 3–50 characters).
 - NISN/NPSN format validation in the API (digits only, exact length), and `tingkat` limited to 1–6 (the database only enforces 0–255).
 - "Student with attempts can't be deleted" (A13) arrives with `pengerjaan`.
