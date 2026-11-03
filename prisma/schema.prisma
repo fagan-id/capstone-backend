@@ -1,5 +1,4 @@
-// Skema Prisma untuk capstone-backend.
-// Belum ada model; tabel ditambahkan setelah desain kolom Accounts + Students (D26).
+// Skema Prisma untuk capstone-backend (Sistem Skrining ABK).
 
 generator client {
   provider            = "prisma-client"
@@ -10,4 +9,208 @@ generator client {
 
 datasource db {
   provider = "mysql"
+}
+
+enum StatusSesi {
+  menunggu
+  aktif
+  selesai
+}
+
+enum JenisKelamin {
+  laki_laki
+  perempuan
+}
+
+model SuperAdmin {
+  idAdmin   Int       @id @default(autoincrement()) @map("id_admin")
+  username  String    @db.VarChar(255)
+  email     String    @unique @db.VarChar(255)
+  password  String    @db.VarChar(255)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  sekolah     Sekolah[]
+  tesSkrining TesSkrining[]
+
+  @@map("super_admin")
+}
+
+model Sekolah {
+  idSchool      Int       @id @default(autoincrement()) @map("id_school")
+  adminId       Int       @map("admin_id")
+  schoolName    String    @map("school_name") @db.VarChar(255)
+  email         String    @unique @db.VarChar(255)
+  password      String    @db.VarChar(255)
+  alamat        String?   @db.Text
+  kontakTelepon String    @map("kontak_telepon") @db.VarChar(255)
+  statusAktif   Boolean   @default(true) @map("status_aktif")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  superAdmin   SuperAdmin     @relation(fields: [adminId], references: [idAdmin])
+  sesiSkrining SesiSkrining[]
+  siswa        Siswa[]
+
+  @@map("sekolah")
+}
+
+model KategoriAsesmen {
+  idKategori   Int       @id @default(autoincrement()) @map("id_kategori")
+  namaKategori String    @map("nama_kategori") @db.VarChar(255)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  sesiSkrining SesiSkrining[]
+  pertanyaan   Pertanyaan[]
+
+  @@map("kategori_asesmen")
+}
+
+model TesSkrining {
+  idTest      Int       @id @default(autoincrement()) @map("id_test")
+  adminId     Int       @map("admin_id")
+  namaTes     String    @map("nama_tes") @db.VarChar(255)
+  jenjang     String    @db.VarChar(255)
+  deskripsi   String    @db.Text
+  statusAktif Boolean   @default(true) @map("status_aktif")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  superAdmin           SuperAdmin             @relation(fields: [adminId], references: [idAdmin])
+  pertanyaan           Pertanyaan[]
+  konfigurasiPenilaian KonfigurasiPenilaian[]
+
+  @@map("tes_skrining")
+}
+
+model SesiSkrining {
+  idSession          Int        @id @default(autoincrement()) @map("id_session")
+  schoolId           Int        @map("school_id")
+  idKategori         Int        @map("idKategori")
+  namaSesi           String     @map("nama_sesi") @db.VarChar(255)
+  kodeSkrining       String     @unique @map("kode_skrining") @db.VarChar(255)
+  tanggalPelaksanaan DateTime   @map("tanggal_pelaksanaan") @db.Date
+  statusSesi         StatusSesi @map("status_sesi")
+  createdAt          DateTime   @default(now()) @map("created_at")
+  updatedAt          DateTime   @updatedAt @map("updated_at")
+  deletedAt          DateTime?  @map("deleted_at")
+
+  sekolah         Sekolah         @relation(fields: [schoolId], references: [idSchool])
+  kategoriAsesmen KategoriAsesmen @relation(fields: [idKategori], references: [idKategori])
+  hasilSkrining   HasilSkrining[]
+
+  @@map("sesi_skrining")
+}
+
+model Siswa {
+  idStudent    Int          @id @default(autoincrement()) @map("id_student")
+  schoolId     Int          @map("school_id")
+  namaLengkap  String       @map("nama_lengkap") @db.VarChar(255)
+  nisn         String       @db.VarChar(255)
+  tanggalLahir DateTime     @map("tanggal_lahir") @db.Date
+  kelas        String       @db.VarChar(255)
+  jenisKelamin JenisKelamin @map("jenis_kelamin")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+  deletedAt    DateTime?    @map("deleted_at")
+
+  sekolah       Sekolah         @relation(fields: [schoolId], references: [idSchool])
+  hasilSkrining HasilSkrining[]
+
+  @@map("siswa")
+}
+
+model Pertanyaan {
+  idPertanyaan   Int       @id @default(autoincrement()) @map("id_pertanyaan")
+  kategoriId     Int       @map("kategori_id")
+  testId         Int       @map("test_id")
+  teksPertanyaan String    @map("teks_pertanyaan") @db.Text
+  urlGambar      String?   @map("url_gambar") @db.VarChar(255)
+  jawabanBenar   String    @map("jawaban_benar") @db.VarChar(255)
+  skor           Int
+  statusAktif    Boolean   @default(true) @map("status_aktif")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  kategoriAsesmen    KategoriAsesmen      @relation(fields: [kategoriId], references: [idKategori])
+  tesSkrining        TesSkrining          @relation(fields: [testId], references: [idTest])
+  opsiJawaban        OpsiJawaban[]
+  detailJawabanSiswa DetailJawabanSiswa[]
+
+  @@map("pertanyaan")
+}
+
+model OpsiJawaban {
+  idJawaban    Int       @id @default(autoincrement()) @map("id_jawaban")
+  pertanyaanId Int       @map("pertanyaan_id")
+  labelOpsi    String    @map("label_opsi") @db.VarChar(10)
+  teksOpsi     String    @map("teks_opsi") @db.VarChar(255)
+  urlGambar    String?   @map("url_gambar") @db.VarChar(255)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  pertanyaan         Pertanyaan           @relation(fields: [pertanyaanId], references: [idPertanyaan])
+  detailJawabanSiswa DetailJawabanSiswa[]
+
+  @@map("opsi_jawaban")
+}
+
+model HasilSkrining {
+  idResult           Int       @id @default(autoincrement()) @map("id_result")
+  studentId          Int       @map("student_id")
+  sessionId          Int       @map("session_id")
+  tanggalSkrining    DateTime  @map("tanggal_skrining") @db.Date
+  waktuSelesai       DateTime  @map("waktu_selesai")
+  totalSkor          Int       @map("total_skor")
+  kesimpulanIndikasi String    @map("kesimpulan_indikasi") @db.Text
+  statusSelesai      Boolean   @map("status_selesai")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  deletedAt          DateTime? @map("deleted_at")
+
+  siswa              Siswa                @relation(fields: [studentId], references: [idStudent])
+  sesiSkrining       SesiSkrining         @relation(fields: [sessionId], references: [idSession])
+  detailJawabanSiswa DetailJawabanSiswa[]
+
+  @@map("hasil_skrining")
+}
+
+model DetailJawabanSiswa {
+  id           Int       @id @default(autoincrement())
+  idHasil      Int       @map("idHasil")
+  idPertanyaan Int       @map("idPertanyaan")
+  idOpsi       Int       @map("idOpsi")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  hasilSkrining HasilSkrining @relation(fields: [idHasil], references: [idResult])
+  pertanyaan    Pertanyaan    @relation(fields: [idPertanyaan], references: [idPertanyaan])
+  opsiJawaban   OpsiJawaban   @relation(fields: [idOpsi], references: [idJawaban])
+
+  @@map("detail_jawaban_siswa")
+}
+
+model KonfigurasiPenilaian {
+  idKonfigurasiPenilaian Int       @id @default(autoincrement()) @map("id_konfigurasiPenilaian")
+  testId                 Int       @map("test_id")
+  skorMin                Int       @map("skor_min")
+  skorMax                Int       @map("skor_max")
+  kategoriHasil          String    @map("kategori_hasil") @db.VarChar(255)
+  deskripsi              String    @db.Text
+  rekomendasi            String    @db.Text
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+  deletedAt              DateTime? @map("deleted_at")
+
+  tesSkrining TesSkrining @relation(fields: [testId], references: [idTest])
+
+  @@map("konfigurasi_penilaian")
 }

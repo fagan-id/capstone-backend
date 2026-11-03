@@ -12,6 +12,7 @@
     "test": "tsx --test",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:seed": "tsx prisma/seed.js",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down"
   },
