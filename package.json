@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "tsx watch src/server.js",
     "start": "tsx src/server.js",
-    "test": "tsx --test \"tests/*.test.js\"",
+    "test": "tsx --test \"tests/**/*.test.js\"",
     "test:db": "tsx --test \"tests/db/*.dbtest.js\"",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",

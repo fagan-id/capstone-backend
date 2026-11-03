@@ -12,6 +12,10 @@ test("buatDataSeed menolak SEED_PASSWORD kosong", async () => {
   await assert.rejects(buatDataSeed({ SEED_PASSWORD: "   " }), /SEED_PASSWORD/);
 });
 
+test("buatDataSeed menolak password contoh dari .env.example", async () => {
+  await assert.rejects(buatDataSeed({ SEED_PASSWORD: "ganti_password_seed_ini" }), /masih memakai contoh/);
+});
+
 test("buatDataSeed menolak SEED_PASSWORD pendek", async () => {
   await assert.rejects(buatDataSeed({ SEED_PASSWORD: "1234567" }), /minimal 8 karakter/);
 });

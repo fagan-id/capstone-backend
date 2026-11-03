@@ -70,7 +70,8 @@ model siswa {
   updated_at    DateTime      @updatedAt
 
   sekolah sekolah @relation(fields: [sekolah_id], references: [id], onDelete: Restrict)
-  kelas   kelas   @relation(fields: [kelas_id, sekolah_id], references: [id, sekolah_id], onDelete: Restrict)
+  // onUpdate: Restrict — tanpa ini, mengubah kelas.sekolah_id ikut memindahkan siswanya ke sekolah lain.
+  kelas   kelas   @relation(fields: [kelas_id, sekolah_id], references: [id, sekolah_id], onDelete: Restrict, onUpdate: Restrict)
 
   @@index([sekolah_id, nama])
 }

@@ -19,10 +19,12 @@ export async function buatDataSeed(env) {
   if (env.NODE_ENV === "production") {
     throw new Error("Seed tidak boleh dijalankan saat NODE_ENV=production.");
   }
-
   const password = env.SEED_PASSWORD;
   if (password === undefined || password.trim() === "") {
     throw new Error("SEED_PASSWORD belum diisi. Tambahkan SEED_PASSWORD di .env (minimal 8 karakter).");
+  }
+  if (password.trim() === "ganti_password_seed_ini") {
+    throw new Error("SEED_PASSWORD masih memakai contoh dari .env.example. Ganti dengan password sendiri.");
   }
   if (password.length < 8) {
     throw new Error("SEED_PASSWORD minimal 8 karakter.");

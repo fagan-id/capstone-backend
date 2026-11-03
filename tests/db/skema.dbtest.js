@@ -138,6 +138,20 @@ test("kelas siswa harus milik sekolah yang sama", async () => {
   });
 });
 
+test("sekolah kelas tidak bisa dipindah saat masih punya siswa", async () => {
+  await dalamTransaksiBatal(async (tx) => {
+    const a = await buatSekolah(tx, 1);
+    const b = await buatSekolah(tx, 2);
+    const k = await buatKelas(tx, a.id);
+    const s = await buatSiswa(tx, a.id, k.id);
+
+    await assert.rejects(tx.kelas.update({ where: { id: k.id }, data: { sekolah_id: b.id } }), { code: "P2003" });
+
+    const tetap = await tx.siswa.findUnique({ where: { id: s.id } });
+    assert.equal(tetap.sekolah_id, a.id);
+  });
+});
+
 test("kelas yang masih punya siswa tidak bisa dihapus", async () => {
   await dalamTransaksiBatal(async (tx) => {
     const a = await buatSekolah(tx, 1);
