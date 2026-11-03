@@ -6,6 +6,7 @@
 import { Router } from "express";
 import ApiResponse from "../utils/apiResponse.js";
 import logger from "../utils/logger.js";
+import publicScreeningRoutes from "./publicScreeningRoutes.js";
 
 /**
  * Membuat router API.
@@ -14,6 +15,9 @@ import logger from "../utils/logger.js";
  */
 export function createRouter({ config, cekDatabase }) {
   const router = Router();
+
+  // Rute Publik Skrining ABK (Orang Tua / Siswa)
+  router.use("/public/skrining", publicScreeningRoutes);
 
   router.get("/health", async (req, res) => {
     const timestamp = new Date().toISOString();
