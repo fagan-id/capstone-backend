@@ -13,6 +13,7 @@
     "test:db": "tsx --test \"tests/db/*.dbtest.js\"",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:seed": "tsx prisma/seed.js",
     "db:seed": "prisma db seed",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down"
