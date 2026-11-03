@@ -1,4 +1,5 @@
 // Skema Prisma untuk capstone-backend (Sistem Skrining ABK).
+// Skema Prisma untuk capstone-backend. Desain: docs/superpowers/specs/2026-10-27-accounts-students-schema-design.md
 
 generator client {
   provider            = "prisma-client"
@@ -213,4 +214,66 @@ model KonfigurasiPenilaian {
   tesSkrining TesSkrining @relation(fields: [testId], references: [idTest])
 
   @@map("konfigurasi_penilaian")
+enum jenis_kelamin {
+  L
+  P
+}
+
+model super_admin {
+  id            Int      @id @default(autoincrement())
+  nama          String   @db.VarChar(100)
+  email         String   @unique @db.VarChar(191)
+  password_hash String   @db.VarChar(255)
+  aktif         Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+}
+
+model sekolah {
+  id            Int      @id @default(autoincrement())
+  npsn          String   @unique @db.Char(8)
+  nama          String   @db.VarChar(150)
+  alamat        String?  @db.VarChar(255)
+  email         String   @unique @db.VarChar(191)
+  username      String   @unique @db.VarChar(50)
+  password_hash String   @db.VarChar(255)
+  aktif         Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  kelas kelas[]
+  siswa siswa[]
+}
+
+model kelas {
+  id           Int      @id @default(autoincrement())
+  sekolah_id   Int
+  nama         String   @db.VarChar(20)
+  tingkat      Int      @db.UnsignedTinyInt
+  tahun_ajaran String   @db.Char(9)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  sekolah sekolah @relation(fields: [sekolah_id], references: [id], onDelete: Restrict)
+  siswa   siswa[]
+
+  @@unique([sekolah_id, tahun_ajaran, nama])
+  @@unique([id, sekolah_id])
+}
+
+model siswa {
+  id            Int           @id @default(autoincrement())
+  sekolah_id    Int
+  kelas_id      Int
+  nisn          String        @unique @db.Char(10)
+  nama          String        @db.VarChar(150)
+  tanggal_lahir DateTime      @db.Date
+  jenis_kelamin jenis_kelamin
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @updatedAt
+
+  sekolah sekolah @relation(fields: [sekolah_id], references: [id], onDelete: Restrict)
+  kelas   kelas   @relation(fields: [kelas_id, sekolah_id], references: [id, sekolah_id], onDelete: Restrict)
+
+  @@index([sekolah_id, nama])
 }

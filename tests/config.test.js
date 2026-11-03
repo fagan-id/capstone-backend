@@ -10,8 +10,8 @@ test("loadConfig memakai nilai default", () => {
   assert.equal(c.isDevelopment, true);
   assert.equal(c.port, 5000);
   assert.deepEqual(c.corsOrigin, ["http://localhost:3000"]);
-  assert.deepEqual(c.db, { host: "127.0.0.1", port: 3306, user: "capstone_user", password: "rahasia", name: "capstone_skrining" });
-  assert.equal(c.databaseUrl, "mysql://capstone_user:rahasia@127.0.0.1:3306/capstone_skrining");
+  assert.deepEqual(c.db, { host: "127.0.0.1", port: 3307, user: "capstone_user", password: "rahasia", name: "capstone_skrining" });
+  assert.equal(c.databaseUrl, "mysql://capstone_user:rahasia@127.0.0.1:3307/capstone_skrining");
 });
 
 test("loadConfig menolak variabel DB yang kosong atau hilang", () => {
@@ -20,7 +20,7 @@ test("loadConfig menolak variabel DB yang kosong atau hilang", () => {
 
 test("loadConfig meng-encode karakter khusus pada user dan password", () => {
   const c = loadConfig({ ...base, DB_PASSWORD: "p@ss#/word" });
-  assert.equal(c.databaseUrl, "mysql://capstone_user:p%40ss%23%2Fword@127.0.0.1:3306/capstone_skrining");
+  assert.equal(c.databaseUrl, "mysql://capstone_user:p%40ss%23%2Fword@127.0.0.1:3307/capstone_skrining");
 });
 
 test("loadConfig menolak PORT dan DB_PORT yang tidak valid", () => {
