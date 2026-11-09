@@ -340,11 +340,19 @@ test("submitLevel1 menyelesaikan percobaan bila tidak ada domain terindikasi", a
     const hasil = await layanan.submitLevel1(tx, token);
 
     assert.equal(hasil.selesai, true);
+    assert.equal(hasil.status, "selesai");
+    assert.equal(hasil.tindak_lanjut_tersedia, false);
+    assert.equal(hasil.jumlah_instrumen_lanjutan, 0);
 
     const tersimpan = await tx.hasil_skrining.findUnique({ where: { token } });
     assert.equal(tersimpan.selesai, true);
     assert.ok(tersimpan.waktu_selesai instanceof Date);
     assert.ok(tersimpan.kesimpulan);
+
+    const dash = await layanan.getDashboardTindakLanjut(tx, token);
+    assert.equal(dash.seluruh_selesai, true);
+    assert.equal(dash.tindak_lanjut_tersedia, false);
+    assert.equal(dash.total_instrumen, 0);
   });
 });
 

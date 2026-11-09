@@ -387,13 +387,22 @@ export async function submitLevel1(db, token) {
     await tutupPercobaan(db, hasil.id);
   }
 
+  const perluLanjutan = instrumen.length > 0;
+  const kesimpulan = perluLanjutan
+    ? "Ditemukan beberapa indikasi gejala yang memerlukan pemeriksaan lebih mendalam melalui instrumen lanjutan."
+    : "Pengisian skrining telah selesai. Hasil ini bukan diagnosis; pihak sekolah akan menindaklanjuti bila diperlukan.";
+
   return {
     token,
-    selesai: instrumen.length === 0,
+    selesai: !perluLanjutan,
+    status: perluLanjutan ? "tindak_lanjut" : "selesai",
+    tindak_lanjut_tersedia: perluLanjutan,
+    tindakLanjutTersedia: perluLanjutan,
     total_domain_terindikasi: terindikasi.length,
     jumlah_instrumen_lanjutan: instrumen.length,
+    kesimpulan,
     pesan:
-      instrumen.length > 0
+      perluLanjutan
         ? "Terima kasih. Masih ada bagian lanjutan yang perlu Anda isi."
         : "Pengisian skrining telah selesai. Anda boleh menutup halaman ini."
   };
@@ -446,15 +455,23 @@ export async function getDashboardTindakLanjut(db, token) {
   });
 
   const selesai = daftar_instrumen.filter((i) => i.status === "selesai").length;
-  const seluruh_selesai = baris.length > 0 && selesai === baris.length;
+  const seluruh_selesai = baris.length === 0 ? hasil.selesai : selesai === baris.length;
 
   return {
     token,
     nama_siswa: hasil.siswa.nama,
+    status_skrining: hasil.selesai ? "selesai" : "sedang_berjalan",
+    tindak_lanjut_tersedia: baris.length > 0,
+    tindakLanjutTersedia: baris.length > 0,
     total_instrumen: baris.length,
     instrumen_selesai: selesai,
     persentase: baris.length === 0 ? 100 : Math.round((selesai / baris.length) * 100),
     seluruh_selesai,
+    kesimpulan: hasil.kesimpulan,
+    pesan_penutup: seluruh_selesai
+      ? (hasil.kesimpulan ||
+        "Seluruh instrumen skrining lanjutan yang ditugaskan untuk anak Anda telah selesai diisi. Penyelesaian skrining bukan merupakan diagnosis. Anda diperbolehkan menutup halaman ini.")
+      : null,
     daftar_instrumen
   };
 }
