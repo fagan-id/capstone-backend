@@ -28,3 +28,58 @@ test("jalankanSeed dua kali tidak menggandakan data", async () => {
     }
   });
 });
+
+test("jalankanSeed dua kali tidak menggandakan instrumen skrining", async () => {
+  const data = await buatDataSeed({ SEED_PASSWORD: "rahasia123" });
+
+  await dalamTransaksiBatal(async (tx) => {
+    await jalankanSeed(tx, data);
+    await jalankanSeed(tx, data);
+
+    assert.equal(await tx.tes_skrining.count(), data.tes.length);
+    assert.equal(await tx.kategori_asesmen.count(), data.kategori.length);
+    assert.equal(await tx.sesi_skrining.count({ where: { kode: data.sesi.kode } }), 1);
+
+    const jumlahButir = data.tes.reduce((n, t) => n + t.pertanyaan.length, 0);
+    assert.equal(await tx.pertanyaan.count(), jumlahButir);
+
+    const jumlahOpsi = data.tes.reduce((n, t) => n + t.pertanyaan.reduce((m, p) => m + p.opsi.length, 0), 0);
+    assert.equal(await tx.opsi_jawaban.count(), jumlahOpsi);
+  });
+});
+
+test("seed menghubungkan domain ke instrumen lanjutannya", async () => {
+  const data = await buatDataSeed({ SEED_PASSWORD: "rahasia123" });
+
+  await dalamTransaksiBatal(async (tx) => {
+    await jalankanSeed(tx, data);
+
+    const inatensi = await tx.kategori_asesmen.findFirst({
+      where: { nama: "Inatensi" },
+      include: { tes_skrining: true }
+    });
+    assert.equal(inatensi.ambang_batas, 1);
+    assert.equal(inatensi.tes_skrining.level, 2);
+
+    const somatik = await tx.kategori_asesmen.findFirst({ where: { nama: "Somatik" } });
+    assert.equal(somatik.tes_skrining_id, null);
+  });
+});
+
+test("seed menyimpan skor opsi terpisah dari labelnya", async () => {
+  const data = await buatDataSeed({ SEED_PASSWORD: "rahasia123" });
+
+  await dalamTransaksiBatal(async (tx) => {
+    await jalankanSeed(tx, data);
+
+    const yaTidak = await tx.pertanyaan.findFirst({
+      where: { tipe_jawaban: "ya_tidak" },
+      include: { opsi_jawaban: true }
+    });
+
+    const skorPerTeks = Object.fromEntries(yaTidak.opsi_jawaban.map((o) => [o.teks, o.skor]));
+    assert.equal(skorPerTeks["Tidak"], 0);
+    assert.equal(skorPerTeks["Ya"], 2);
+    assert.equal(skorPerTeks["Tidak tahu"], 2);
+  });
+});

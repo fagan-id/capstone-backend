@@ -59,7 +59,8 @@ export function loadConfig(env) {
 
   const db = {
     host: ambil(env, "DB_HOST") ?? "127.0.0.1",
-    port: parsePort(ambil(env, "DB_PORT"), 3307, "DB_PORT"),
+    // 3306 = MySQL lokal (Laragon). Pakai DB_PORT=3307 bila menjalankan MySQL lewat docker-compose.
+    port: parsePort(ambil(env, "DB_PORT"), 3306, "DB_PORT"),
     user: ambil(env, "DB_USER"),
     password: ambil(env, "DB_PASSWORD"),
     name: ambil(env, "DB_NAME")

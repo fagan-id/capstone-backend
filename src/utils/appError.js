@@ -30,6 +30,16 @@ export default class AppError extends Error {
   }
 
   /**
+   * Membuat instance AppError dengan kode 404 (Not Found).
+   * @param {string} message
+   * @param {*} [details=null]
+   * @returns {AppError}
+   */
+  static notFound(message, details = null) {
+    return new AppError(message, 404, details);
+  }
+
+  /**
    * Membuat instance AppError dengan kode 409 (Conflict).
    * @param {string} message
    * @returns {AppError}
