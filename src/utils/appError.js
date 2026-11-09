@@ -30,6 +30,7 @@ export default class AppError extends Error {
   }
 
   /**
+  /**
    * Membuat instance AppError dengan kode 401 (Unauthorized).
    * @param {string} [message="Tidak terautentikasi."]
    * @param {*} [details=null]

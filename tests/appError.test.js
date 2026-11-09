@@ -10,7 +10,6 @@ test("AppError.notFound membuat error 404 yang operasional", () => {
   assert.equal(err.message, "Sesi tidak ditemukan.");
   assert.equal(err.isOperational, true);
 });
-
 test("AppError.unauthorized membuat error 401 yang operasional", () => {
   const err = AppError.unauthorized("Tidak terautentikasi.");
 
