@@ -6,6 +6,7 @@
 import { Router } from "express";
 import ApiResponse from "../utils/apiResponse.js";
 import logger from "../utils/logger.js";
+import authRoutes from "./auth.routes.js";
 import publicScreeningRoutes from "./publicScreeningRoutes.js";
 
 /**
@@ -15,6 +16,9 @@ import publicScreeningRoutes from "./publicScreeningRoutes.js";
  */
 export function createRouter({ config, cekDatabase }) {
   const router = Router();
+
+  // Rute Autentikasi Pengguna (Super Admin & Sekolah)
+  router.use("/auth", authRoutes);
 
   // Rute Publik Skrining ABK (Orang Tua / Siswa)
   router.use("/public/skrining", publicScreeningRoutes);

@@ -32,13 +32,14 @@ export class PublicScreeningValidator {
    * @param {object} body
    */
   static validateMulaiSkrining(body) {
-    const { kodeSesi, studentId, namaOrangTua, nomorHp, hubungan, persetujuan } = body || {};
+    const { kodeSesi, namaOrangTua, nomorHp, hubungan, persetujuan } = body || {};
+    const rawStudentId = body?.studentId ?? body?.idStudent;
 
     if (!kodeSesi || typeof kodeSesi !== "string" || !kodeSesi.trim()) {
       throw AppError.badRequest("Kode sesi wajib diisi.");
     }
 
-    const parsedStudentId = parseInt(studentId, 10);
+    const parsedStudentId = parseInt(rawStudentId, 10);
     if (!parsedStudentId || isNaN(parsedStudentId)) {
       throw AppError.badRequest("ID siswa tidak valid.");
     }
@@ -76,10 +77,11 @@ export class PublicScreeningValidator {
    * @param {object} body
    */
   static validateSimpanJawaban(body) {
-    const { idPertanyaan, idOpsi } = body || {};
+    const rawPertanyaanId = body?.idPertanyaan ?? body?.pertanyaanId;
+    const rawOpsiId = body?.idOpsi ?? body?.opsiId;
 
-    const parsedPertanyaanId = parseInt(idPertanyaan, 10);
-    const parsedOpsiId = parseInt(idOpsi, 10);
+    const parsedPertanyaanId = parseInt(rawPertanyaanId, 10);
+    const parsedOpsiId = parseInt(rawOpsiId, 10);
 
     if (!parsedPertanyaanId || isNaN(parsedPertanyaanId)) {
       throw AppError.badRequest("ID pertanyaan tidak valid.");
@@ -92,6 +94,64 @@ export class PublicScreeningValidator {
     return {
       idPertanyaan: parsedPertanyaanId,
       idOpsi: parsedOpsiId
+    };
+  }
+
+  /**
+   * Validasi parameter idTest.
+   * @param {*} testId
+   */
+  static validateTestId(testId) {
+    const parsed = parseInt(testId, 10);
+    if (!parsed || isNaN(parsed)) {
+      throw AppError.badRequest("Parameter idTest tidak valid.");
+    }
+    return parsed;
+  }
+
+  /**
+   * Validasi pengiriman jawaban lengkap tes skrining (Level 1 atau Level 2).
+   * @param {object} body
+   */
+  static validateSubmitSkrining(body) {
+    const kodeSesi = body?.kodeSesi;
+    const rawStudentId = body?.studentId ?? body?.idStudent;
+    const rawTestId = body?.testId ?? body?.idTest;
+    const jawaban = body?.jawaban;
+
+    if (!kodeSesi || typeof kodeSesi !== "string" || !kodeSesi.trim()) {
+      throw AppError.badRequest("Kode sesi wajib diisi.");
+    }
+
+    const parsedStudentId = parseInt(rawStudentId, 10);
+    if (!parsedStudentId || isNaN(parsedStudentId)) {
+      throw AppError.badRequest("ID siswa tidak valid.");
+    }
+
+    const parsedTestId = parseInt(rawTestId, 10);
+    if (!parsedTestId || isNaN(parsedTestId)) {
+      throw AppError.badRequest("ID tes (idTest) tidak valid.");
+    }
+
+    if (!Array.isArray(jawaban) || jawaban.length === 0) {
+      throw AppError.badRequest("Daftar jawaban harus berupa array dan tidak boleh kosong.");
+    }
+
+    const formattedJawaban = jawaban.map((item, index) => {
+      const idPertanyaan = parseInt(item?.idPertanyaan ?? item?.pertanyaanId, 10);
+      const idOpsi = parseInt(item?.idOpsi ?? item?.opsiId, 10);
+      if (!idPertanyaan || isNaN(idPertanyaan) || !idOpsi || isNaN(idOpsi)) {
+        throw AppError.badRequest(`Jawaban pada indeks ${index} memiliki format tidak valid.`);
+      }
+      return { idPertanyaan, idOpsi };
+    });
+
+    return {
+      kodeSesi: kodeSesi.trim().toUpperCase(),
+      studentId: parsedStudentId,
+      testId: parsedTestId,
+      responden: body?.responden || null,
+      jawaban: formattedJawaban
     };
   }
 }

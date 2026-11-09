@@ -5,6 +5,7 @@
 
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import { createRouter } from "./routes/index.js";
 import { notFoundHandler, createErrorHandler } from "./middlewares/errorHandler.js";
 
@@ -12,6 +13,7 @@ export function createApp({ config, cekDatabase }) {
   const app = express();
 
   app.use(cors({ origin: config.corsOrigin, credentials: true }));
+  app.use(cookieParser());
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 

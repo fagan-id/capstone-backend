@@ -43,7 +43,8 @@ function parsePort(value, fallback, name) {
  *   port: number,
  *   corsOrigin: string[],
  *   db: { host: string, port: number, user: string, password: string, name: string },
- *   databaseUrl: string
+ *   databaseUrl: string,
+ *   jwt: { secret: string, expiresIn: string }
  * }}
  */
 export function loadConfig(env) {
@@ -74,12 +75,18 @@ export function loadConfig(env) {
     `mysql://${encodeURIComponent(db.user)}:${encodeURIComponent(db.password)}` +
     `@${db.host}:${db.port}/${db.name}`;
 
+  const jwt = {
+    secret: ambil(env, "JWT_SECRET") ?? "capstone_abk_super_secret_jwt_key_2026",
+    expiresIn: ambil(env, "JWT_EXPIRES_IN") ?? "1d"
+  };
+
   return {
     env: nodeEnv,
     isDevelopment: nodeEnv === "development",
     port,
     corsOrigin,
     db,
-    databaseUrl
+    databaseUrl,
+    jwt
   };
 }

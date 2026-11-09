@@ -116,6 +116,7 @@ export class PublicScreeningService {
       where: {
         studentId: siswa.idStudent,
         sessionId: sesi.sessionId,
+        statusSelesai: true,
         deletedAt: null
       },
       orderBy: { idResult: "desc" }
@@ -128,13 +129,14 @@ export class PublicScreeningService {
       kelas: siswa.kelas,
       jenisKelamin: siswa.jenisKelamin === "laki_laki" ? "Laki-laki" : "Perempuan",
       hasExistingAttempt: Boolean(existingHasil),
-      attemptStatus: existingHasil ? (existingHasil.statusSelesai ? "selesai" : "sedang_berjalan") : "belum_mulai",
+      attemptStatus: existingHasil ? "selesai" : "belum_mulai",
       existingResultId: existingHasil ? existingHasil.idResult : null
     };
   }
 
   /**
-   * Langkah 5 & 6: Pendaftaran orang tua & persetujuan consent, inisialisasi / resume HasilSkrining.
+   * Langkah 5 & 6: Pendaftaran orang tua & persetujuan consent.
+   * Mengembalikan info tes awal (idTest) TANPA membuat baris prematur di hasil_skrining.
    * @param {object} params
    */
   static async mulaiSkrining({ kodeSesi, studentId, namaOrangTua, nomorHp, hubungan, persetujuan }) {
@@ -142,7 +144,7 @@ export class PublicScreeningService {
 
     const siswa = await prisma.siswa.findFirst({
       where: {
-        idStudent,
+        idStudent: studentId,
         schoolId: sesi.sekolah.idSchool,
         deletedAt: null
       }
@@ -152,81 +154,7 @@ export class PublicScreeningService {
       throw AppError.notFound(`Siswa tidak terdaftar di sekolah ini.`);
     }
 
-    // Periksa riwayat pengerjaan sebelumnya
-    let hasil = await prisma.hasilSkrining.findFirst({
-      where: {
-        studentId: siswa.idStudent,
-        sessionId: sesi.sessionId,
-        deletedAt: null
-      },
-      orderBy: { idResult: "desc" }
-    });
-
-    const metadataResponden = {
-      responden: {
-        namaLengkap: namaOrangTua,
-        nomorHp,
-        hubungan
-      },
-      persetujuanWali: Boolean(persetujuan),
-      waktuPersetujuan: new Date().toISOString()
-    };
-
-    if (hasil) {
-      // Jika skrining level 1 sudah selesai, periksa apakah ada instrumen lanjutan
-      if (hasil.statusSelesai) {
-        return {
-          idHasil: hasil.idResult,
-          studentId: siswa.idStudent,
-          namaSiswa: siswa.namaLengkap,
-          statusSelesai: true,
-          totalSkor: hasil.totalSkor,
-          responden: metadataResponden.responden,
-          message: "Skrining awal untuk siswa ini telah selesai diisi. Anda dapat melanjutkan instrumen tindak lanjut."
-        };
-      }
-    } else {
-      // Inisialisasi draft pengerjaan baru
-      hasil = await prisma.hasilSkrining.create({
-        data: {
-          studentId: siswa.idStudent,
-          sessionId: sesi.sessionId,
-          tanggalSkrining: new Date(),
-          waktuSelesai: new Date(),
-          totalSkor: 0,
-          kesimpulanIndikasi: JSON.stringify(metadataResponden),
-          statusSelesai: false
-        }
-      });
-    }
-
-    return {
-      idHasil: hasil.idResult,
-      studentId: siswa.idStudent,
-      namaSiswa: siswa.namaLengkap,
-      statusSelesai: hasil.statusSelesai,
-      responden: metadataResponden.responden
-    };
-  }
-
-  /**
-   * Langkah 7: Ambil soal Skrining Awal (Level 1) beserta autosaved answers.
-   * @param {number} idHasil
-   */
-  static async getPertanyaanLevel1(idHasil) {
-    const hasil = await prisma.hasilSkrining.findUnique({
-      where: { idResult: idHasil },
-      include: {
-        sesiSkrining: true,
-        siswa: true
-      }
-    });
-
-    if (!hasil) {
-      throw AppError.notFound("Sesi pengerjaan skrining tidak ditemukan.");
-    }
-
-    // Cari tes Level 1 (misal tes pertama atau namaTes yang mengandung 'Level 1' / 'Skrining Awal')
+    // Cari tes Skrining Awal (Level 1)
     let testLevel1 = await prisma.tesSkrining.findFirst({
       where: {
         namaTes: { contains: "Awal" },
@@ -236,21 +164,65 @@ export class PublicScreeningService {
     });
 
     if (!testLevel1) {
-      // Fallback ke tes aktif pertama
       testLevel1 = await prisma.tesSkrining.findFirst({
         where: { statusAktif: true, deletedAt: null },
         orderBy: { idTest: "asc" }
       });
     }
 
-    if (!testLevel1) {
-      throw AppError.notFound("Instrumen tes skrining awal belum dikonfigurasi.");
+    const idTest = testLevel1 ? testLevel1.idTest : 1;
+
+    // Periksa apakah siswa sudah memiliki hasil skrining di sesi ini
+    const existingHasil = await prisma.hasilSkrining.findFirst({
+      where: {
+        studentId: siswa.idStudent,
+        sessionId: sesi.sessionId,
+        statusSelesai: true,
+        deletedAt: null
+      },
+      orderBy: { idResult: "desc" }
+    });
+
+    return {
+      sessionId: sesi.sessionId,
+      kodeSesi: sesi.kodeSesi,
+      studentId: siswa.idStudent,
+      namaSiswa: siswa.namaLengkap,
+      idTest,
+      namaTes: testLevel1?.namaTes || "Skrining Awal (Level 1)",
+      statusSelesai: existingHasil ? existingHasil.statusSelesai : false,
+      existingResultId: existingHasil ? existingHasil.idResult : null,
+      responden: {
+        namaLengkap: namaOrangTua,
+        nomorHp,
+        hubungan
+      },
+      message: existingHasil
+        ? "Siswa ini telah memiliki riwayat skrining pada sesi ini."
+        : "Registrasi kontak orang tua berhasil. Silakan ambil pertanyaan tes skrining."
+    };
+  }
+
+  /**
+   * Langkah 7, 11, 15: Ambil pertanyaan berdasarkan idTest.
+   * @param {number} testId
+   */
+  static async getPertanyaanByTestId(testId) {
+    const test = await prisma.tesSkrining.findFirst({
+      where: {
+        idTest: testId,
+        statusAktif: true,
+        deletedAt: null
+      }
+    });
+
+    if (!test) {
+      throw AppError.notFound(`Instrumen tes dengan idTest ${testId} tidak ditemukan.`);
     }
 
-    // Ambil seluruh pertanyaan beserta opsi jawabannya
     const daftarPertanyaan = await prisma.pertanyaan.findMany({
       where: {
-        testId: testLevel1.idTest,
+        testId,
         statusAktif: true,
         deletedAt: null
       },
@@ -263,46 +235,364 @@ export class PublicScreeningService {
       orderBy: { idPertanyaan: "asc" }
     });
 
-    // Ambil jawaban yang sudah pernah tersimpan (autosaved answers)
-    const jawabanTersimpan = await prisma.detailJawabanSiswa.findMany({
-      where: {
-        idHasil,
-        deletedAt: null
-      }
-    });
-
-    const mapJawaban = new Map(jawabanTersimpan.map((j) => [j.idPertanyaan, j.idOpsi]));
-
-    const pertanyaanFormatted = daftarPertanyaan.map((p, index) => ({
-      nomorUrut: index + 1,
-      idPertanyaan: p.idPertanyaan,
-      teksPertanyaan: p.teksPertanyaan,
-      urlGambar: p.urlGambar,
-      jawabanTerpilih: mapJawaban.get(p.idPertanyaan) || null,
-      opsiJawaban: p.opsiJawaban.map((o) => ({
-        idJawaban: o.idJawaban,
-        labelOpsi: o.labelOpsi,
-        teksOpsi: o.teksOpsi,
-        urlGambar: o.urlGambar
-      }))
-    }));
-
-    const totalDijawab = jawabanTersimpan.filter((j) =>
-      daftarPertanyaan.some((p) => p.idPertanyaan === j.idPertanyaan)
-    ).length;
-
     return {
-      idHasil: hasil.idResult,
-      namaTes: testLevel1.namaTes,
-      petunjukWaktu: "Selama DUA (2) MINGGU terakhir, seberapa sering anak Anda mengalami hal berikut?",
+      idTest: test.idTest,
+      namaTes: test.namaTes,
+      petunjukWaktu:
+        test.deskripsi ||
+        "Untuk setiap pernyataan, pilih jawaban yang paling menggambarkan kondisi anak Anda.",
       totalSoal: daftarPertanyaan.length,
-      totalDijawab,
-      pertanyaan: pertanyaanFormatted
+      pertanyaan: daftarPertanyaan.map((p, index) => ({
+        nomorUrut: index + 1,
+        idPertanyaan: p.idPertanyaan,
+        teksPertanyaan: p.teksPertanyaan,
+        urlGambar: p.urlGambar,
+        opsiJawaban: p.opsiJawaban.map((o) => ({
+          idJawaban: o.idJawaban,
+          labelOpsi: o.labelOpsi,
+          teksOpsi: o.teksOpsi,
+          urlGambar: o.urlGambar
+        }))
+      }))
     };
   }
 
   /**
-   * Langkah 7, 11, 15: Autosave jawaban butir soal.
+   * Fallback: Ambil pertanyaan untuk pengerjaan lama via idHasil.
+   * @param {number} idHasil
+   */
+  static async getPertanyaanLevel1(idHasil) {
+    const hasil = await prisma.hasilSkrining.findUnique({
+      where: { idResult: idHasil }
+    });
+
+    let testLevel1 = await prisma.tesSkrining.findFirst({
+      where: { namaTes: { contains: "Awal" }, statusAktif: true, deletedAt: null }
+    });
+
+    if (!testLevel1) {
+      testLevel1 = await prisma.tesSkrining.findFirst({
+        where: { statusAktif: true, deletedAt: null },
+        orderBy: { idTest: "asc" }
+      });
+    }
+
+    if (!testLevel1) {
+      throw AppError.notFound("Instrumen tes skrining awal belum dikonfigurasi.");
+    }
+
+    const dataSoal = await this.getPertanyaanByTestId(testLevel1.idTest);
+
+    // Ambil autosaved answers jika ada
+    let jawabanTersimpan = [];
+    if (hasil) {
+      jawabanTersimpan = await prisma.detailJawabanSiswa.findMany({
+        where: { idHasil, deletedAt: null }
+      });
+    }
+
+    const mapJawaban = new Map(jawabanTersimpan.map((j) => [j.idPertanyaan, j.idOpsi]));
+
+    return {
+      ...dataSoal,
+      idHasil,
+      totalDijawab: jawabanTersimpan.length,
+      pertanyaan: dataSoal.pertanyaan.map((p) => ({
+        ...p,
+        jawabanTerpilih: mapJawaban.get(p.idPertanyaan) || null
+      }))
+    };
+  }
+
+  /**
+   * Submit Skrining Lengkap: Menghitung skor, menentukan kesimpulan indikasi,
+   * dan mencatat ke tabel hasil_skrining & detail_jawaban_siswa.
+   * @param {object} params
+   */
+  static async submitSkrining({ kodeSesi, studentId, testId, responden, jawaban }) {
+    const sesi = await this.validasiSesi(kodeSesi);
+
+    const siswa = await prisma.siswa.findFirst({
+      where: {
+        idStudent: studentId,
+        schoolId: sesi.sekolah.idSchool,
+        deletedAt: null
+      }
+    });
+
+    if (!siswa) {
+      throw AppError.notFound("Siswa tidak terdaftar di sekolah ini.");
+    }
+
+    const test = await prisma.tesSkrining.findFirst({
+      where: { idTest: testId, deletedAt: null }
+    });
+
+    if (!test) {
+      throw AppError.notFound("Instrumen tes tidak ditemukan.");
+    }
+
+    // Ambil seluruh pertanyaan aktif untuk testId ini
+    const daftarPertanyaan = await prisma.pertanyaan.findMany({
+      where: {
+        testId,
+        statusAktif: true,
+        deletedAt: null
+      },
+      include: {
+        opsiJawaban: { where: { deletedAt: null } }
+      },
+      orderBy: { idPertanyaan: "asc" }
+    });
+
+    if (daftarPertanyaan.length === 0) {
+      throw AppError.badRequest("Instrumen ini belum memiliki pertanyaan yang aktif.");
+    }
+
+    // Verifikasi kelengkapan jawaban (semua butir wajib diisi)
+    const mapJawaban = new Map(jawaban.map((j) => [j.idPertanyaan, j.idOpsi]));
+    const belumDijawab = [];
+
+    daftarPertanyaan.forEach((p, idx) => {
+      if (!mapJawaban.has(p.idPertanyaan)) {
+        belumDijawab.push({ nomorUrut: idx + 1, idPertanyaan: p.idPertanyaan });
+      }
+    });
+
+    if (belumDijawab.length > 0) {
+      throw AppError.badRequest(`Harap lengkapi seluruh pertanyaan pada ${test.namaTes} sebelum mengirimkan jawaban.`, {
+        totalSoal: daftarPertanyaan.length,
+        totalDijawab: mapJawaban.size,
+        belumDijawab
+      });
+    }
+
+    // Kalkulasi skor total dari jawaban
+    let totalSkor = 0;
+    const detailJawabanData = [];
+
+    for (const p of daftarPertanyaan) {
+      const selectedOpsiId = mapJawaban.get(p.idPertanyaan);
+      const selectedOpsi = p.opsiJawaban.find((o) => o.idJawaban === selectedOpsiId);
+
+      if (!selectedOpsi) {
+        throw AppError.badRequest(`Opsi jawaban dengan ID ${selectedOpsiId} tidak cocok untuk pertanyaan ${p.idPertanyaan}.`);
+      }
+
+      // Ambil nilai numerik dari label opsi (misal "0", "1", "2", "3", "4")
+      const opsiScore = parseInt(selectedOpsi.labelOpsi, 10);
+      if (!isNaN(opsiScore)) {
+        totalSkor += opsiScore;
+      } else {
+        totalSkor += p.skor || 0;
+      }
+
+      detailJawabanData.push({
+        idPertanyaan: p.idPertanyaan,
+        idOpsi: selectedOpsiId
+      });
+    }
+
+    // Tentukan kesimpulan indikasi berdasarkan konfigurasi penilaian
+    const configPenilaian = await prisma.konfigurasiPenilaian.findFirst({
+      where: {
+        testId,
+        skorMin: { lte: totalSkor },
+        skorMax: { gte: totalSkor },
+        deletedAt: null
+      }
+    });
+
+    let kesimpulanIndikasi = configPenilaian
+      ? configPenilaian.kategoriHasil
+      : totalSkor >= 11
+      ? "Perlu Tindak Lanjut Instrumen Tambahan"
+      : "Indikasi Ringan / Dalam Batas Wajar";
+
+    // Simpan ke tabel hasil_skrining saat submit final
+    const hasil = await prisma.hasilSkrining.create({
+      data: {
+        studentId: siswa.idStudent,
+        sessionId: sesi.sessionId,
+        tanggalSkrining: new Date(),
+        waktuSelesai: new Date(),
+        totalSkor,
+        kesimpulanIndikasi,
+        statusSelesai: true
+      }
+    });
+
+    // Simpan seluruh butir jawaban ke detail_jawaban_siswa
+    if (detailJawabanData.length > 0) {
+      await prisma.detailJawabanSiswa.createMany({
+        data: detailJawabanData.map((d) => ({
+          idHasil: hasil.idResult,
+          idPertanyaan: d.idPertanyaan,
+          idOpsi: d.idOpsi
+        }))
+      });
+    }
+
+    // Cek apakah tes ini Level 1 dan memicu Level 2 (Tindak lanjut)
+    const isLevel1 = test.namaTes.toLowerCase().includes("awal") || test.idTest === 1;
+    const tindakLanjutTersedia = isLevel1 && totalSkor >= 11;
+
+    // Ambil daftar instrumen lanjutan jika perlu
+    let instrumenLanjutan = [];
+    if (tindakLanjutTersedia) {
+      const followUpTests = await prisma.tesSkrining.findMany({
+        where: {
+          NOT: { idTest: test.idTest },
+          statusAktif: true,
+          deletedAt: null
+        },
+        orderBy: { idTest: "asc" }
+      });
+      instrumenLanjutan = followUpTests.map((t) => ({
+        idTest: t.idTest,
+        namaTes: t.namaTes,
+        deskripsi: t.deskripsi
+      }));
+    }
+
+    return {
+      idHasil: hasil.idResult,
+      studentId: siswa.idStudent,
+      namaSiswa: siswa.namaLengkap,
+      idTest: test.idTest,
+      namaTes: test.namaTes,
+      totalSoal: daftarPertanyaan.length,
+      totalSkor,
+      kesimpulanIndikasi,
+      statusSelesai: true,
+      tindakLanjutTersedia,
+      daftarInstrumenLanjutan: tindakLanjutTersedia ? instrumenLanjutan : [],
+      pesan: tindakLanjutTersedia
+        ? "Pihak sekolah telah menetapkan instrumen skrining lanjutan yang perlu Anda isi."
+        : "Skrining berhasil diselesaikan dan disimpan."
+    };
+  }
+
+  /**
+   * Langkah 9, 10, 14, 18: Dashboard Status Tindak Lanjut (Level 2).
+   * @param {object} params
+   */
+  static async getDashboardTindakLanjut({ kodeSesi, studentId, idHasil }) {
+    let studentIdFinal = studentId;
+    let sessionIdFinal = null;
+
+    if (idHasil) {
+      const hasil = await prisma.hasilSkrining.findUnique({
+        where: { idResult: parseInt(idHasil, 10) },
+        include: { siswa: true }
+      });
+      if (hasil) {
+        studentIdFinal = hasil.studentId;
+        sessionIdFinal = hasil.sessionId;
+      }
+    }
+
+    if (kodeSesi && !sessionIdFinal) {
+      const sesi = await this.validasiSesi(kodeSesi);
+      sessionIdFinal = sesi.sessionId;
+    }
+
+    const siswa = await prisma.siswa.findFirst({
+      where: { idStudent: studentIdFinal, deletedAt: null }
+    });
+
+    if (!siswa) {
+      throw AppError.notFound("Data siswa tidak ditemukan.");
+    }
+
+    // Ambil daftar instrumen lanjutan (Tes yang bukan Skrining Awal)
+    const instrumenLanjutan = await prisma.tesSkrining.findMany({
+      where: {
+        NOT: {
+          namaTes: { contains: "Awal" }
+        },
+        statusAktif: true,
+        deletedAt: null
+      },
+      orderBy: { idTest: "asc" }
+    });
+
+    if (instrumenLanjutan.length === 0) {
+      return {
+        namaSiswa: siswa.namaLengkap,
+        progressPengisian: "0 dari 0 instrumen dikerjakan",
+        persentase: 100,
+        seluruhSelesai: true,
+        daftarInstrumen: []
+      };
+    }
+
+    // Hitung status pengerjaan tiap instrumen berdasarkan jawaban siswa di sesi ini
+    const daftarFormatted = [];
+    let previousSelesai = true;
+    let countSelesai = 0;
+
+    for (const inst of instrumenLanjutan) {
+      const totalSoalInst = await prisma.pertanyaan.count({
+        where: { testId: inst.idTest, statusAktif: true, deletedAt: null }
+      });
+
+      // Cari jawaban siswa pada tes ini di sesi ini
+      const dijawabInst = await prisma.detailJawabanSiswa.count({
+        where: {
+          pertanyaan: { testId: inst.idTest },
+          deletedAt: null,
+          hasilSkrining: {
+            studentId: siswa.idStudent,
+            ...(sessionIdFinal ? { sessionId: sessionIdFinal } : {})
+          }
+        }
+      });
+
+      const isSelesai = totalSoalInst > 0 && dijawabInst >= totalSoalInst;
+
+      let status = "terkunci";
+      if (isSelesai) {
+        status = "selesai";
+        countSelesai++;
+      } else if (previousSelesai) {
+        status = "aktif";
+        previousSelesai = false;
+      } else {
+        status = "terkunci";
+      }
+
+      daftarFormatted.push({
+        idTest: inst.idTest,
+        namaTes: inst.namaTes,
+        deskripsi: inst.deskripsi,
+        totalSoal: totalSoalInst,
+        soalDijawab: dijawabInst,
+        status, // 'selesai' | 'aktif' | 'terkunci'
+        canStart: status === "aktif"
+      });
+    }
+
+    const totalInstrumen = instrumenLanjutan.length;
+    const seluruhSelesai = countSelesai === totalInstrumen;
+    const persentase = totalInstrumen > 0 ? Math.round((countSelesai / totalInstrumen) * 100) : 100;
+
+    return {
+      namaSiswa: siswa.namaLengkap,
+      progressPengisian: `${countSelesai} dari ${totalInstrumen} instrumen dikerjakan`,
+      totalInstrumen,
+      instrumenSelesai: countSelesai,
+      persentase,
+      seluruhSelesai,
+      pesanPenutup: seluruhSelesai
+        ? "Seluruh instrumen skrining lanjutan yang ditugaskan untuk anak Anda telah selesai diisi. Penyelesaian skrining bukan merupakan diagnosis. Anda diperbolehkan menutup halaman ini."
+        : null,
+      daftarInstrumen: daftarFormatted
+    };
+  }
+
+  /**
+   * Autosave jawaban butir soal jika ada sesi pengerjaan aktif.
    * @param {number} idHasil
    * @param {number} idPertanyaan
    * @param {number} idOpsi
@@ -316,7 +606,6 @@ export class PublicScreeningService {
       throw AppError.notFound("Sesi pengerjaan tidak ditemukan.");
     }
 
-    // Verifikasi opsi jawaban valid
     const opsi = await prisma.opsiJawaban.findFirst({
       where: {
         idJawaban: idOpsi,
@@ -329,7 +618,6 @@ export class PublicScreeningService {
       throw AppError.badRequest("Opsi jawaban tidak cocok dengan pertanyaan yang dipilih.");
     }
 
-    // Upsert jawaban
     const existingJawaban = await prisma.detailJawabanSiswa.findFirst({
       where: {
         idHasil,
@@ -366,13 +654,12 @@ export class PublicScreeningService {
   }
 
   /**
-   * Langkah 8: Submit dan kalkulasi skor Skrining Awal (Level 1).
+   * Submit via idHasil (legacy/fallback).
    * @param {number} idHasil
    */
   static async submitLevel1(idHasil) {
     const dataTes = await this.getPertanyaanLevel1(idHasil);
 
-    // Cek kelengkapan pengisian seluruh butir (Decision D14)
     const belumDijawab = dataTes.pertanyaan
       .filter((p) => !p.jawabanTerpilih)
       .map((p) => ({ nomorUrut: p.nomorUrut, idPertanyaan: p.idPertanyaan }));
@@ -385,7 +672,6 @@ export class PublicScreeningService {
       });
     }
 
-    // Ambil seluruh detail jawaban untuk menghitung skor
     const jawabanSiswa = await prisma.detailJawabanSiswa.findMany({
       where: { idHasil, deletedAt: null },
       include: {
@@ -394,10 +680,8 @@ export class PublicScreeningService {
       }
     });
 
-    // Kalkulasi skor berdasarkan bobot opsi / pertanyaan
     let totalSkor = 0;
     for (const j of jawabanSiswa) {
-      // Ambil angka dari labelOpsi jika numerik (misal '0', '1', '2', '3', '4') atau skor pertanyaan
       const opsiScore = parseInt(j.opsiJawaban.labelOpsi, 10);
       if (!isNaN(opsiScore)) {
         totalSkor += opsiScore;
@@ -406,7 +690,6 @@ export class PublicScreeningService {
       }
     }
 
-    // Cari konfigurasi penilaian
     const test = await prisma.tesSkrining.findFirst({
       where: { namaTes: { contains: "Awal" }, deletedAt: null }
     });
@@ -426,7 +709,6 @@ export class PublicScreeningService {
       }
     }
 
-    // Update status selesai pada HasilSkrining
     await prisma.hasilSkrining.update({
       where: { idResult: idHasil },
       data: {
@@ -443,193 +725,18 @@ export class PublicScreeningService {
       totalSoal: dataTes.totalSoal,
       totalSkor,
       kesimpulanIndikasi: kesimpulan,
-      tindakLanjutTersedia: true, // Memicu Layar 9 & 10
+      tindakLanjutTersedia: true,
       pesan: "Pihak sekolah telah menetapkan instrumen skrining lanjutan yang perlu Anda isi."
     };
   }
 
   /**
-   * Langkah 9, 10, 14, 18: Dashboard Instrumen Lanjutan (Level 2).
-   * @param {number} idHasil
-   */
-  static async getDashboardTindakLanjut(idHasil) {
-    const hasil = await prisma.hasilSkrining.findUnique({
-      where: { idResult: idHasil },
-      include: { siswa: true }
-    });
-
-    if (!hasil) {
-      throw AppError.notFound("Data hasil skrining tidak ditemukan.");
-    }
-
-    // Ambil daftar instrumen lanjutan (Tes yang bukan Skrining Awal)
-    const instrumenLanjutan = await prisma.tesSkrining.findMany({
-      where: {
-        NOT: {
-          namaTes: { contains: "Awal" }
-        },
-        statusAktif: true,
-        deletedAt: null
-      },
-      orderBy: { idTest: "asc" }
-    });
-
-    if (instrumenLanjutan.length === 0) {
-      return {
-        idHasil,
-        namaSiswa: hasil.siswa.namaLengkap,
-        progressText: "0 dari 0 instrumen dikerjakan",
-        persentase: 100,
-        seluruhSelesai: true,
-        daftarInstrumen: []
-      };
-    }
-
-    // Hitung status pengerjaan tiap instrumen
-    const daftarFormatted = [];
-    let previousSelesai = true; // Instrumen pertama langsung aktif jika belum selesai
-    let countSelesai = 0;
-
-    for (const inst of instrumenLanjutan) {
-      const totalSoalInst = await prisma.pertanyaan.count({
-        where: { testId: inst.idTest, statusAktif: true, deletedAt: null }
-      });
-
-      const dijawabInst = await prisma.detailJawabanSiswa.count({
-        where: {
-          idHasil,
-          deletedAt: null,
-          pertanyaan: { testId: inst.idTest }
-        }
-      });
-
-      const isSelesai = totalSoalInst > 0 && dijawabInst >= totalSoalInst;
-
-      let status = "terkunci";
-      if (isSelesai) {
-        status = "selesai";
-        countSelesai++;
-      } else if (previousSelesai) {
-        status = "aktif";
-        previousSelesai = false; // Instrumen selanjutnya harus menunggu instrumen ini
-      } else {
-        status = "terkunci";
-      }
-
-      daftarFormatted.push({
-        idTest: inst.idTest,
-        namaTes: inst.namaTes,
-        deskripsi: inst.deskripsi,
-        totalSoal: totalSoalInst,
-        soalDijawab: dijawabInst,
-        status, // 'selesai' | 'aktif' | 'terkunci'
-        canStart: status === "aktif"
-      });
-    }
-
-    const totalInstrumen = instrumenLanjutan.length;
-    const seluruhSelesai = countSelesai === totalInstrumen;
-    const persentase = totalInstrumen > 0 ? Math.round((countSelesai / totalInstrumen) * 100) : 100;
-
-    return {
-      idHasil,
-      namaSiswa: hasil.siswa.namaLengkap,
-      progressPengisian: `${countSelesai} dari ${totalInstrumen} instrumen dikerjakan`,
-      totalInstrumen,
-      instrumenSelesai: countSelesai,
-      persentase,
-      seluruhSelesai,
-      pesanPenutup: seluruhSelesai
-        ? "Seluruh instrumen skrining lanjutan yang ditugaskan untuk anak Anda telah selesai diisi. Penyelesaian skrining bukan merupakan diagnosis. Anda diperbolehkan menutup halaman ini."
-        : null,
-      daftarInstrumen: daftarFormatted
-    };
-  }
-
-  /**
-   * Langkah 11, 15: Ambil pertanyaan untuk instrumen lanjutan spesifik.
-   * @param {number} idHasil
-   * @param {number} testId
-   */
-  static async getPertanyaanInstrumenLanjutan(idHasil, testId) {
-    const instrumen = await prisma.tesSkrining.findUnique({
-      where: { idTest: testId }
-    });
-
-    if (!instrumen) {
-      throw AppError.notFound("Instrumen lanjutan tidak ditemukan.");
-    }
-
-    const daftarPertanyaan = await prisma.pertanyaan.findMany({
-      where: {
-        testId,
-        statusAktif: true,
-        deletedAt: null
-      },
-      include: {
-        opsiJawaban: {
-          where: { deletedAt: null },
-          orderBy: { idJawaban: "asc" }
-        }
-      },
-      orderBy: { idPertanyaan: "asc" }
-    });
-
-    const jawabanTersimpan = await prisma.detailJawabanSiswa.findMany({
-      where: {
-        idHasil,
-        deletedAt: null,
-        pertanyaan: { testId }
-      }
-    });
-
-    const mapJawaban = new Map(jawabanTersimpan.map((j) => [j.idPertanyaan, j.idOpsi]));
-
-    const pertanyaanFormatted = daftarPertanyaan.map((p, index) => ({
-      nomorUrut: index + 1,
-      idPertanyaan: p.idPertanyaan,
-      teksPertanyaan: p.teksPertanyaan,
-      urlGambar: p.urlGambar,
-      jawabanTerpilih: mapJawaban.get(p.idPertanyaan) || null,
-      opsiJawaban: p.opsiJawaban.map((o) => ({
-        idJawaban: o.idJawaban,
-        labelOpsi: o.labelOpsi,
-        teksOpsi: o.teksOpsi
-      }))
-    }));
-
-    return {
-      idHasil,
-      idTest: instrumen.idTest,
-      namaTes: instrumen.namaTes,
-      petunjukWaktu:
-        instrumen.deskripsi ||
-        "Untuk setiap pernyataan, pilih jawaban yang paling menggambarkan kondisi anak Anda selama TUJUH (7) HARI terakhir",
-      totalSoal: daftarPertanyaan.length,
-      totalDijawab: jawabanTersimpan.length,
-      pertanyaan: pertanyaanFormatted
-    };
-  }
-
-  /**
-   * Langkah 12, 13, 16, 17: Submit instrumen lanjutan.
+   * Submit instrumen lanjutan via idHasil & testId (legacy/fallback).
    * @param {number} idHasil
    * @param {number} testId
    */
   static async submitInstrumenLanjutan(idHasil, testId) {
-    const dataTes = await this.getPertanyaanInstrumenLanjutan(idHasil, testId);
-
-    const belumDijawab = dataTes.pertanyaan
-      .filter((p) => !p.jawabanTerpilih)
-      .map((p) => ({ nomorUrut: p.nomorUrut, idPertanyaan: p.idPertanyaan }));
-
-    if (belumDijawab.length > 0) {
-      throw AppError.badRequest(`Harap lengkapi seluruh pertanyaan pada ${dataTes.namaTes} sebelum mengirim.`, {
-        totalSoal: dataTes.totalSoal,
-        totalDijawab: dataTes.totalDijawab,
-        belumDijawab
-      });
-    }
+    const dataTes = await this.getPertanyaanByTestId(testId);
 
     return {
       idHasil,

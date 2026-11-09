@@ -7,34 +7,70 @@
  * - Instrumen: Skrining Awal (Level 1, 25 butir), Instrumen A (8 butir), Instrumen B (5 butir), Instrumen C (11 butir)
  */
 
+import bcrypt from "bcrypt";
 import { prisma } from "../src/lib/prisma.js";
 
 async function main() {
   console.log("🌱 Memulai seeding data Skrining ABK...");
 
+  const defaultPassword = "Password123!";
+  const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
   // 1. Super Admin
   const admin = await prisma.superAdmin.upsert({
-    where: { email: "admin@kemdikbud.go.id" },
-    update: {},
+    where: { email: "admin@skriningabk.id" },
+    update: {
+      username: "superadmin",
+      password: hashedPassword
+    },
     create: {
       username: "superadmin",
-      email: "admin@kemdikbud.go.id",
-      password: "password123"
+      email: "admin@skriningabk.id",
+      password: hashedPassword
     }
   });
 
-  // 2. Sekolah: SD Negeri Sleman 1
+  // 2. Akun Sekolah Aktif: SDN Sukamaju 01
   const sekolah = await prisma.sekolah.upsert({
-    where: { email: "sdnsleman1@sekolah.id" },
-    update: {},
+    where: { email: "sdnsukamaju01@sch.id" },
+    update: {
+      adminId: admin.idAdmin,
+      schoolName: "SDN Sukamaju 01",
+      kontakTelepon: "081234567890",
+      alamat: "Jl. Pendidikan No. 1",
+      statusAktif: true,
+      password: hashedPassword
+    },
     create: {
       adminId: admin.idAdmin,
-      schoolName: "SD Negeri Sleman 1",
-      email: "sdnsleman1@sekolah.id",
-      password: "password123",
-      alamat: "Jl. Magelang No. 12, Sleman, D.I. Yogyakarta",
-      kontakTelepon: "0274-881234",
-      statusAktif: true
+      schoolName: "SDN Sukamaju 01",
+      email: "sdnsukamaju01@sch.id",
+      kontakTelepon: "081234567890",
+      alamat: "Jl. Pendidikan No. 1",
+      statusAktif: true,
+      password: hashedPassword
+    }
+  });
+
+  // 3. Akun Sekolah Nonaktif (untuk pengujian Postman status_aktif: false)
+  await prisma.sekolah.upsert({
+    where: { email: "sdnnonaktif@sch.id" },
+    update: {
+      adminId: admin.idAdmin,
+      schoolName: "SDN Nonaktif 02",
+      kontakTelepon: "081298765432",
+      alamat: "Jl. Melati No. 2",
+      statusAktif: false,
+      password: hashedPassword
+    },
+    create: {
+      adminId: admin.idAdmin,
+      schoolName: "SDN Nonaktif 02",
+      email: "sdnnonaktif@sch.id",
+      kontakTelepon: "081298765432",
+      alamat: "Jl. Melati No. 2",
+      statusAktif: false,
+      password: hashedPassword
     }
   });
 
