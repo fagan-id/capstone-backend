@@ -30,6 +30,26 @@ export default class AppError extends Error {
   }
 
   /**
+   * Membuat instance AppError dengan kode 401 (Unauthorized).
+   * @param {string} [message="Tidak terautentikasi."]
+   * @param {*} [details=null]
+   * @returns {AppError}
+   */
+  static unauthorized(message = "Tidak terautentikasi.", details = null) {
+    return new AppError(message, 401, details);
+  }
+
+  /**
+   * Membuat instance AppError dengan kode 403 (Forbidden).
+   * @param {string} [message="Akses ditolak."]
+   * @param {*} [details=null]
+   * @returns {AppError}
+   */
+  static forbidden(message = "Akses ditolak.", details = null) {
+    return new AppError(message, 403, details);
+  }
+
+  /**
    * Membuat instance AppError dengan kode 404 (Not Found).
    * @param {string} message
    * @param {*} [details=null]
