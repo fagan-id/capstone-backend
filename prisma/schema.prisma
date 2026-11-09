@@ -1,4 +1,8 @@
 // Skema Prisma untuk capstone-backend (Sistem Skrining ABK).
+// Desain: docs/superpowers/specs/2026-10-27-accounts-students-schema-design.md
+//         docs/superpowers/specs/2026-11-03-integrasi-modul-skrining-publik-design.md
+// Penamaan mengikuti D20/D39: snake_case Indonesia, PK `id`, FK `<tabel>_id`,
+// nama model sama dengan nama tabel, kecuali `created_at` / `updated_at` yang tetap Inggris.
 
 generator client {
   provider            = "prisma-client"
@@ -11,206 +15,259 @@ datasource db {
   provider = "mysql"
 }
 
-enum StatusSesi {
+enum jenis_kelamin {
+  L
+  P
+}
+
+enum status_sesi {
   menunggu
   aktif
   selesai
 }
 
-enum JenisKelamin {
-  laki_laki
-  perempuan
+enum tipe_jawaban {
+  skala
+  ya_tidak
 }
 
-model SuperAdmin {
-  idAdmin   Int       @id @default(autoincrement()) @map("id_admin")
-  username  String    @db.VarChar(255)
-  email     String    @unique @db.VarChar(255)
-  password  String    @db.VarChar(255)
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  deletedAt DateTime? @map("deleted_at")
+model super_admin {
+  id            Int      @id @default(autoincrement())
+  nama          String   @db.VarChar(100)
+  email         String   @unique @db.VarChar(191)
+  password_hash String   @db.VarChar(255)
+  aktif         Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
 
-  sekolah     Sekolah[]
-  tesSkrining TesSkrining[]
-
-  @@map("super_admin")
+  tes_skrining tes_skrining[]
 }
 
-model Sekolah {
-  idSchool      Int       @id @default(autoincrement()) @map("id_school")
-  adminId       Int       @map("admin_id")
-  schoolName    String    @map("school_name") @db.VarChar(255)
-  email         String    @unique @db.VarChar(255)
-  password      String    @db.VarChar(255)
-  alamat        String?   @db.Text
-  kontakTelepon String    @map("kontak_telepon") @db.VarChar(255)
-  statusAktif   Boolean   @default(true) @map("status_aktif")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  deletedAt     DateTime? @map("deleted_at")
+model sekolah {
+  id             Int      @id @default(autoincrement())
+  npsn           String   @unique @db.Char(8)
+  nama           String   @db.VarChar(150)
+  alamat         String?  @db.VarChar(255)
+  email          String   @unique @db.VarChar(191)
+  username       String   @unique @db.VarChar(50)
+  password_hash  String   @db.VarChar(255)
+  kontak_telepon String?  @db.VarChar(20)
+  aktif          Boolean  @default(true)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
 
-  superAdmin   SuperAdmin     @relation(fields: [adminId], references: [idAdmin])
-  sesiSkrining SesiSkrining[]
-  siswa        Siswa[]
-
-  @@map("sekolah")
+  kelas         kelas[]
+  siswa         siswa[]
+  sesi_skrining sesi_skrining[]
 }
 
-model KategoriAsesmen {
-  idKategori   Int       @id @default(autoincrement()) @map("id_kategori")
-  namaKategori String    @map("nama_kategori") @db.VarChar(255)
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-  deletedAt    DateTime? @map("deleted_at")
+model kelas {
+  id           Int      @id @default(autoincrement())
+  sekolah_id   Int
+  nama         String   @db.VarChar(20)
+  tingkat      Int      @db.UnsignedTinyInt
+  tahun_ajaran String   @db.Char(9)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
 
-  sesiSkrining SesiSkrining[]
-  pertanyaan   Pertanyaan[]
+  sekolah sekolah @relation(fields: [sekolah_id], references: [id], onDelete: Restrict)
+  siswa   siswa[]
 
-  @@map("kategori_asesmen")
+  @@unique([sekolah_id, tahun_ajaran, nama])
+  @@unique([id, sekolah_id])
 }
 
-model TesSkrining {
-  idTest      Int       @id @default(autoincrement()) @map("id_test")
-  adminId     Int       @map("admin_id")
-  namaTes     String    @map("nama_tes") @db.VarChar(255)
-  jenjang     String    @db.VarChar(255)
-  deskripsi   String    @db.Text
-  statusAktif Boolean   @default(true) @map("status_aktif")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  deletedAt   DateTime? @map("deleted_at")
+model siswa {
+  id            Int           @id @default(autoincrement())
+  sekolah_id    Int
+  kelas_id      Int
+  nisn          String        @unique @db.Char(10)
+  nama          String        @db.VarChar(150)
+  tanggal_lahir DateTime      @db.Date
+  jenis_kelamin jenis_kelamin
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @updatedAt
 
-  superAdmin           SuperAdmin             @relation(fields: [adminId], references: [idAdmin])
-  pertanyaan           Pertanyaan[]
-  konfigurasiPenilaian KonfigurasiPenilaian[]
+  sekolah sekolah @relation(fields: [sekolah_id], references: [id], onDelete: Restrict)
+  // onUpdate: Restrict — tanpa ini, mengubah kelas.sekolah_id ikut memindahkan siswanya ke sekolah lain.
+  kelas   kelas   @relation(fields: [kelas_id, sekolah_id], references: [id, sekolah_id], onDelete: Restrict, onUpdate: Restrict)
 
-  @@map("tes_skrining")
+  hasil_skrining hasil_skrining[]
+
+  @@index([sekolah_id, nama])
 }
 
-model SesiSkrining {
-  idSession          Int        @id @default(autoincrement()) @map("id_session")
-  schoolId           Int        @map("school_id")
-  idKategori         Int        @map("idKategori")
-  namaSesi           String     @map("nama_sesi") @db.VarChar(255)
-  kodeSkrining       String     @unique @map("kode_skrining") @db.VarChar(255)
-  tanggalPelaksanaan DateTime   @map("tanggal_pelaksanaan") @db.Date
-  statusSesi         StatusSesi @map("status_sesi")
-  createdAt          DateTime   @default(now()) @map("created_at")
-  updatedAt          DateTime   @updatedAt @map("updated_at")
-  deletedAt          DateTime?  @map("deleted_at")
+/// Domain DSM-5 pada skrining awal. Ambang batasnya dipakai per butir, bukan per jumlah (D43).
+model kategori_asesmen {
+  id              Int      @id @default(autoincrement())
+  nama            String   @db.VarChar(100)
+  ambang_batas    Int      @db.UnsignedTinyInt
+  tes_skrining_id Int?
+  deskripsi       String?  @db.Text
+  rekomendasi     String?  @db.Text
+  urutan          Int      @db.UnsignedTinyInt
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 
-  sekolah         Sekolah         @relation(fields: [schoolId], references: [idSchool])
-  kategoriAsesmen KategoriAsesmen @relation(fields: [idKategori], references: [idKategori])
-  hasilSkrining   HasilSkrining[]
+  // Instrumen Level 2 untuk domain ini. Kosong berarti domain hanya ditandai untuk sekolah (D34).
+  tes_skrining   tes_skrining?    @relation(fields: [tes_skrining_id], references: [id], onDelete: Restrict)
+  pertanyaan     pertanyaan[]
+  hasil_kategori hasil_kategori[]
 
-  @@map("sesi_skrining")
+  @@unique([urutan])
+  @@index([tes_skrining_id])
 }
 
-model Siswa {
-  idStudent    Int          @id @default(autoincrement()) @map("id_student")
-  schoolId     Int          @map("school_id")
-  namaLengkap  String       @map("nama_lengkap") @db.VarChar(255)
-  nisn         String       @db.VarChar(255)
-  tanggalLahir DateTime     @map("tanggal_lahir") @db.Date
-  kelas        String       @db.VarChar(255)
-  jenisKelamin JenisKelamin @map("jenis_kelamin")
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
-  deletedAt    DateTime?    @map("deleted_at")
+model tes_skrining {
+  id             Int      @id @default(autoincrement())
+  super_admin_id Int
+  nama           String   @db.VarChar(150)
+  level          Int      @db.UnsignedTinyInt
+  jenjang        String   @db.VarChar(50)
+  deskripsi      String   @db.Text
+  aktif          Boolean  @default(true)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
 
-  sekolah       Sekolah         @relation(fields: [schoolId], references: [idSchool])
-  hasilSkrining HasilSkrining[]
+  super_admin      super_admin        @relation(fields: [super_admin_id], references: [id], onDelete: Restrict)
+  pertanyaan       pertanyaan[]
+  kategori_asesmen kategori_asesmen[]
+  hasil_tes        hasil_tes[]
 
-  @@map("siswa")
+  @@index([super_admin_id])
+  @@index([level, aktif])
 }
 
-model Pertanyaan {
-  idPertanyaan   Int       @id @default(autoincrement()) @map("id_pertanyaan")
-  kategoriId     Int       @map("kategori_id")
-  testId         Int       @map("test_id")
-  teksPertanyaan String    @map("teks_pertanyaan") @db.Text
-  urlGambar      String?   @map("url_gambar") @db.VarChar(255)
-  jawabanBenar   String    @map("jawaban_benar") @db.VarChar(255)
-  skor           Int
-  statusAktif    Boolean   @default(true) @map("status_aktif")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-  deletedAt      DateTime? @map("deleted_at")
+model sesi_skrining {
+  id                  Int         @id @default(autoincrement())
+  sekolah_id          Int
+  nama                String      @db.VarChar(150)
+  kode                String      @unique @db.VarChar(20)
+  tanggal_pelaksanaan DateTime    @db.Date
+  status              status_sesi
+  created_at          DateTime    @default(now())
+  updated_at          DateTime    @updatedAt
 
-  kategoriAsesmen    KategoriAsesmen      @relation(fields: [kategoriId], references: [idKategori])
-  tesSkrining        TesSkrining          @relation(fields: [testId], references: [idTest])
-  opsiJawaban        OpsiJawaban[]
-  detailJawabanSiswa DetailJawabanSiswa[]
+  sekolah        sekolah          @relation(fields: [sekolah_id], references: [id], onDelete: Restrict)
+  hasil_skrining hasil_skrining[]
 
-  @@map("pertanyaan")
+  @@index([sekolah_id])
 }
 
-model OpsiJawaban {
-  idJawaban    Int       @id @default(autoincrement()) @map("id_jawaban")
-  pertanyaanId Int       @map("pertanyaan_id")
-  labelOpsi    String    @map("label_opsi") @db.VarChar(10)
-  teksOpsi     String    @map("teks_opsi") @db.VarChar(255)
-  urlGambar    String?   @map("url_gambar") @db.VarChar(255)
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-  deletedAt    DateTime? @map("deleted_at")
+model pertanyaan {
+  id                  Int          @id @default(autoincrement())
+  tes_skrining_id     Int
+  kategori_asesmen_id Int
+  teks                String       @db.Text
+  tipe_jawaban        tipe_jawaban
+  nomor_urut          Int          @db.UnsignedSmallInt
+  url_gambar          String?      @db.VarChar(255)
+  aktif               Boolean      @default(true)
+  created_at          DateTime     @default(now())
+  updated_at          DateTime     @updatedAt
 
-  pertanyaan         Pertanyaan           @relation(fields: [pertanyaanId], references: [idPertanyaan])
-  detailJawabanSiswa DetailJawabanSiswa[]
+  tes_skrining     tes_skrining     @relation(fields: [tes_skrining_id], references: [id], onDelete: Restrict)
+  kategori_asesmen kategori_asesmen @relation(fields: [kategori_asesmen_id], references: [id], onDelete: Restrict)
+  opsi_jawaban     opsi_jawaban[]
+  jawaban_siswa    jawaban_siswa[]
 
-  @@map("opsi_jawaban")
+  @@unique([tes_skrining_id, nomor_urut])
+  @@index([kategori_asesmen_id])
 }
 
-model HasilSkrining {
-  idResult           Int       @id @default(autoincrement()) @map("id_result")
-  studentId          Int       @map("student_id")
-  sessionId          Int       @map("session_id")
-  tanggalSkrining    DateTime  @map("tanggal_skrining") @db.Date
-  waktuSelesai       DateTime  @map("waktu_selesai")
-  totalSkor          Int       @map("total_skor")
-  kesimpulanIndikasi String    @map("kesimpulan_indikasi") @db.Text
-  statusSelesai      Boolean   @map("status_selesai")
-  createdAt          DateTime  @default(now()) @map("created_at")
-  updatedAt          DateTime  @updatedAt @map("updated_at")
-  deletedAt          DateTime? @map("deleted_at")
+model opsi_jawaban {
+  id            Int      @id @default(autoincrement())
+  pertanyaan_id Int
+  label         String   @db.VarChar(10)
+  teks          String   @db.VarChar(255)
+  skor          Int      @db.UnsignedTinyInt
+  urutan        Int      @db.UnsignedTinyInt
+  url_gambar    String?  @db.VarChar(255)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
 
-  siswa              Siswa                @relation(fields: [studentId], references: [idStudent])
-  sesiSkrining       SesiSkrining         @relation(fields: [sessionId], references: [idSession])
-  detailJawabanSiswa DetailJawabanSiswa[]
+  pertanyaan    pertanyaan      @relation(fields: [pertanyaan_id], references: [id], onDelete: Restrict)
+  jawaban_siswa jawaban_siswa[]
 
-  @@map("hasil_skrining")
+  @@unique([pertanyaan_id, urutan])
 }
 
-model DetailJawabanSiswa {
-  id           Int       @id @default(autoincrement())
-  idHasil      Int       @map("idHasil")
-  idPertanyaan Int       @map("idPertanyaan")
-  idOpsi       Int       @map("idOpsi")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-  deletedAt    DateTime? @map("deleted_at")
+/// Satu percobaan pengisian oleh orang tua. Rute publik mengaksesnya lewat `token`, bukan `id`.
+model hasil_skrining {
+  id                 Int       @id @default(autoincrement())
+  siswa_id           Int
+  sesi_skrining_id   Int
+  token              String    @unique @db.Char(36)
+  nama_responden     String    @db.VarChar(150)
+  nomor_hp_responden String    @db.VarChar(20)
+  hubungan_responden String    @db.VarChar(50)
+  waktu_persetujuan  DateTime
+  waktu_mulai        DateTime
+  waktu_selesai      DateTime?
+  selesai            Boolean   @default(false)
+  kesimpulan         String?   @db.Text
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
 
-  hasilSkrining HasilSkrining @relation(fields: [idHasil], references: [idResult])
-  pertanyaan    Pertanyaan    @relation(fields: [idPertanyaan], references: [idPertanyaan])
-  opsiJawaban   OpsiJawaban   @relation(fields: [idOpsi], references: [idJawaban])
+  siswa          siswa            @relation(fields: [siswa_id], references: [id], onDelete: Restrict)
+  sesi_skrining  sesi_skrining    @relation(fields: [sesi_skrining_id], references: [id], onDelete: Restrict)
+  jawaban_siswa  jawaban_siswa[]
+  hasil_kategori hasil_kategori[]
+  hasil_tes      hasil_tes[]
 
-  @@map("detail_jawaban_siswa")
+  @@unique([siswa_id, sesi_skrining_id])
+  @@index([sesi_skrining_id])
 }
 
-model KonfigurasiPenilaian {
-  idKonfigurasiPenilaian Int       @id @default(autoincrement()) @map("id_konfigurasiPenilaian")
-  testId                 Int       @map("test_id")
-  skorMin                Int       @map("skor_min")
-  skorMax                Int       @map("skor_max")
-  kategoriHasil          String    @map("kategori_hasil") @db.VarChar(255)
-  deskripsi              String    @db.Text
-  rekomendasi            String    @db.Text
-  createdAt              DateTime  @default(now()) @map("created_at")
-  updatedAt              DateTime  @updatedAt @map("updated_at")
-  deletedAt              DateTime? @map("deleted_at")
+model jawaban_siswa {
+  id                Int      @id @default(autoincrement())
+  hasil_skrining_id Int
+  pertanyaan_id     Int
+  opsi_jawaban_id   Int
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
 
-  tesSkrining TesSkrining @relation(fields: [testId], references: [idTest])
+  hasil_skrining hasil_skrining @relation(fields: [hasil_skrining_id], references: [id], onDelete: Restrict)
+  pertanyaan     pertanyaan     @relation(fields: [pertanyaan_id], references: [id], onDelete: Restrict)
+  opsi_jawaban   opsi_jawaban   @relation(fields: [opsi_jawaban_id], references: [id], onDelete: Restrict)
 
-  @@map("konfigurasi_penilaian")
+  @@unique([hasil_skrining_id, pertanyaan_id])
+  @@index([pertanyaan_id])
+  @@index([opsi_jawaban_id])
+}
+
+/// Hasil per domain, ditulis sekali saat skrining awal dikirim. Ambangnya ikut disimpan (D35, D41).
+model hasil_kategori {
+  id                  Int      @id @default(autoincrement())
+  hasil_skrining_id   Int
+  kategori_asesmen_id Int
+  skor_tertinggi      Int      @db.UnsignedTinyInt
+  ambang_batas        Int      @db.UnsignedTinyInt
+  terindikasi         Boolean
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  hasil_skrining   hasil_skrining   @relation(fields: [hasil_skrining_id], references: [id], onDelete: Restrict)
+  kategori_asesmen kategori_asesmen @relation(fields: [kategori_asesmen_id], references: [id], onDelete: Restrict)
+
+  @@unique([hasil_skrining_id, kategori_asesmen_id])
+  @@index([kategori_asesmen_id])
+}
+
+/// Satu baris per instrumen yang diberikan ke anak: Level 1 saat mulai, Level 2 per domain terindikasi.
+model hasil_tes {
+  id                Int       @id @default(autoincrement())
+  hasil_skrining_id Int
+  tes_skrining_id   Int
+  total_skor        Int?      @db.UnsignedSmallInt
+  selesai           Boolean   @default(false)
+  waktu_selesai     DateTime?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  hasil_skrining hasil_skrining @relation(fields: [hasil_skrining_id], references: [id], onDelete: Restrict)
+  tes_skrining   tes_skrining   @relation(fields: [tes_skrining_id], references: [id], onDelete: Restrict)
+
+  @@unique([hasil_skrining_id, tes_skrining_id])
+  @@index([tes_skrining_id])
 }

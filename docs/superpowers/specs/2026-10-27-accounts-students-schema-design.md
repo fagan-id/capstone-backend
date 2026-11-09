@@ -13,7 +13,7 @@ All tables: `id` Int auto-increment PK, `created_at` (default now), `updated_at`
 
 **`super_admin`**: `nama` VarChar(100), `email` VarChar(191) unique, `password_hash` VarChar(255), `aktif` Boolean default true.
 
-**`sekolah`** (one login per school, D21): `npsn` Char(8) unique, `nama` VarChar(150), `alamat` VarChar(255) optional, `email` VarChar(191) unique, `password_hash` VarChar(255), `aktif` Boolean default true.
+**`sekolah`** (one login per school, D21; logs in with email **or** username + password, D40): `npsn` Char(8) unique, `nama` VarChar(150), `alamat` VarChar(255) optional, `email` VarChar(191) unique, `username` VarChar(50) unique, `password_hash` VarChar(255), `aktif` Boolean default true.
 
 **`kelas`**: `sekolah_id` FK, `nama` VarChar(20) (e.g. `4A`), `tingkat` unsigned TinyInt (1–6), `tahun_ajaran` Char(9) (e.g. `2026/2027`, D25). Unique (`sekolah_id`, `tahun_ajaran`, `nama`).
 
@@ -24,7 +24,8 @@ All tables: `id` Int auto-increment PK, `created_at` (default now), `updated_at`
 - **A student's class belongs to the student's school**, enforced by the database: `siswa (kelas_id, sekolah_id)` references `kelas (id, sekolah_id)` (needs a unique key on `kelas (id, sekolah_id)`).
 - **All foreign keys `ON DELETE RESTRICT`.** A class with students can't be deleted. A school with classes or students can't be deleted. Schools and super admins are switched off with `aktif`, never soft-deleted (a soft-deleted row would keep its email taken).
 - **Students are hard deleted** (D24). The "no attempts" guard (A13) arrives with the `pengerjaan` table.
-- Emails are unique **case-insensitively** (MySQL `utf8mb4_unicode_ci` does this already).
+- Emails and school usernames are unique **case-insensitively** (MySQL `utf8mb4_unicode_ci` does this already).
+- A username never contains `@` (checked by the API later), so a login identifier with `@` is looked up as an email and one without as a username. One school can never match another school's email by username.
 - NISN and NPSN are strings, so leading zeros are kept. Their format (digits only, exact length) is checked by the API later, not here.
 
 ## Migration and seed
@@ -40,6 +41,8 @@ All tables: `id` Int auto-increment PK, `created_at` (default now), `updated_at`
 4. `siswa.sekolah_id` is stored even though `kelas` has it, and the composite FK keeps the two consistent.
 5. Database tests run each case inside a transaction that is rolled back, so the dev database is untouched. They live apart from `npm test` (`npm run test:db`), because they need MySQL running.
 6. bcrypt cost 10 for the seed. The login API plan can raise it.
+7. School `email` and `username` are **both required**, so either one always works for login (D40). Super Admin logs in with email only.
+8. `created_at` / `updated_at` stay in English (D39).
 
 ## Not in this design
 
