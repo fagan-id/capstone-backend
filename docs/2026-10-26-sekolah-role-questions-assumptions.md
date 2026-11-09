@@ -54,6 +54,8 @@ Status labels: **OPEN** (no answer yet), **LEANING** (partial answer, needs conf
 | D39 | Exception to D20: the timestamp columns stay in English, **`created_at` / `updated_at`**. | 2026-11-02 |
 | D40 | **School login: email or username, plus password.** `sekolah` has both `email` and `username`, each unique and required. Super Admin logs in with email only. | 2026-11-02 |
 | D41 | **Finished is finished.** A completed attempt is never re-scored, even if Super Admin later changes a threshold. Confirms D35 (thresholds locked per published version). | 2026-11-02 |
+| D42 | **The session code is shared per school**, handed to every parent of that session. Anyone holding it may search the student list: the flow is code → confirm school → confirm child → fill in parent data. The listing itself is accepted, so no second factor before the search. Narrows A4 and A11: the exposure stands, but the **response stays name + kelas only** (A4), so `nisn` and `tanggal_lahir` are never returned. | 2026-11-03 |
+| D43 | **Scoring follows the DSM-5 per-item, per-domain rule**, not a sum of all answers: a domain is flagged when its highest single answer reaches that domain's threshold. Replaces the partner's placeholder total-score bands. Implements D33/D34. | 2026-11-03 |
 
 ---
 
