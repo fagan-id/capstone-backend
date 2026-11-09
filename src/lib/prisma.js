@@ -21,6 +21,20 @@ const adapter = new PrismaMariaDb({
 
 export const prisma = new PrismaClient({ adapter });
 
+// Alias camelCase untuk kompatibilitas antar modul dan mock test
+if (!prisma.superAdmin) {
+  Object.defineProperty(prisma, "superAdmin", {
+    get() {
+      return prisma.super_admin;
+    },
+    set(val) {
+      prisma.super_admin = val;
+    },
+    configurable: true,
+    enumerable: true
+  });
+}
+
 /**
  * Memastikan database dapat dijangkau. Reject jika koneksi gagal.
  * @returns {Promise<void>}

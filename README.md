@@ -57,6 +57,7 @@ MySQL dapat diakses dari host pada port `3307` (lihat `DB_PORT` di `.env`), sehi
 | `npm run docker:up` | Menyalakan container MySQL dan phpMyAdmin |
 | `npm run docker:down` | Mematikan container (data tetap tersimpan) |
 
-## Dokumentasi
+## Dokumentasi & Pengujian API
 
-Keputusan desain, spesifikasi, dan rencana kerja ada di folder `docs/`.
+- Keputusan desain, spesifikasi, dan rencana kerja ada di folder `docs/`.
+- Koleksi dan environment Postman siap pakai untuk pengujian API ada di folder `postman/` (lihat [panduan Postman](postman/README.md)).
