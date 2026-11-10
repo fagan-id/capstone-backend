@@ -3,7 +3,7 @@
  * Rute ini tanpa login, jadi seluruh masukan dari peserta diperiksa di sini sebelum masuk layanan.
  */
 
-import AppError from "../utils/appError.js";
+import AppError from "../../utils/appError.js";
 
 const HUBUNGAN = ["orang_tua", "wali", "lainnya"];
 const POLA_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

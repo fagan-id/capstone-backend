@@ -10,7 +10,7 @@
     "dev": "tsx watch src/server.js",
     "start": "tsx src/server.js",
     "test": "tsx --test",
-    "test:db": "tsx --test tests/db/skema.dbtest.js tests/db/seed.dbtest.js tests/db/skrining.dbtest.js tests/db/skriningPublik.dbtest.js tests/db/alurPercabanganSkrining.dbtest.js",
+    "test:db": "tsx --test tests/db/skema.dbtest.js tests/db/seed.dbtest.js tests/db/skrining.dbtest.js tests/db/skriningOrangTua.dbtest.js tests/db/alurPercabanganSkrining.dbtest.js tests/db/superAdminKelolaSekolah.dbtest.js",
     "test:screening": "tsx --test tests/db/alurPercabanganSkrining.dbtest.js",
     "test:screening:verbose": "tsx scripts/test-screening.js",
     "db:generate": "prisma generate",

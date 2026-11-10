@@ -5,10 +5,10 @@
 
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { prisma } from "../lib/prisma.js";
-import { config } from "../config/index.js";
-import ApiResponse from "../utils/apiResponse.js";
-import AppError from "../utils/appError.js";
+import { prisma } from "../../lib/prisma.js";
+import { config } from "../../config/index.js";
+import ApiResponse from "../../utils/apiResponse.js";
+import AppError from "../../utils/appError.js";
 
 export class AuthController {
   /**

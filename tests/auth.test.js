@@ -4,7 +4,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { prisma } from "../src/lib/prisma.js";
 import { config } from "../src/config/index.js";
-import { AuthController } from "../src/controllers/auth.controller.js";
+import { AuthController } from "../src/controllers/auth/auth.controller.js";
 import { verifyToken, authorizeRoles } from "../src/middlewares/auth.middleware.js";
 
 // Helper mock response

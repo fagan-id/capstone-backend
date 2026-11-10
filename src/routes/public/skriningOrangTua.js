@@ -6,7 +6,7 @@
  */
 
 import { Router } from "express";
-import * as controller from "../controllers/skriningPublik.js";
+import * as controller from "../../controllers/public/skriningOrangTua.js";
 
 const router = Router();
 

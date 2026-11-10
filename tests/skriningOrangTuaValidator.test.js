@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import * as v from "../src/validators/skriningPublik.js";
+import * as v from "../src/validators/public/skriningOrangTua.js";
 
 const mulaiValid = {
   kode: "abc123",
