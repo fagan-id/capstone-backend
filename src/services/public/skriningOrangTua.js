@@ -6,7 +6,7 @@
  */
 
 import { randomUUID } from "node:crypto";
-import AppError from "../utils/appError.js";
+import AppError from "../../utils/appError.js";
 import { nilaiKategori } from "./penilaianSkrining.js";
 
 /** Label netral untuk peserta; nama domain tidak boleh terbaca orang tua (D37). */

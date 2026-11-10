@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { prisma } from "../../src/lib/prisma.js";
 import { buatDataSeed, jalankanSeed } from "../../prisma/seedData.js";
 import { dalamTransaksiBatal } from "./helpers.js";
-import * as layanan from "../../src/services/skriningPublik.js";
+import * as layanan from "../../src/services/public/skriningOrangTua.js";
 
 after(() => prisma.$disconnect());
 

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { nilaiKategori } from "../src/services/penilaianSkrining.js";
+import { nilaiKategori } from "../src/services/public/penilaianSkrining.js";
 
 // Domain DSM-5 contoh: ambang 2 untuk umumnya, 1 untuk inatensi.
 const kategori = [

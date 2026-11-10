@@ -6,8 +6,9 @@
 import { Router } from "express";
 import ApiResponse from "../utils/apiResponse.js";
 import logger from "../utils/logger.js";
-import authRoutes from "./auth.routes.js";
-import skriningPublikRoutes from "./skriningPublik.js";
+import authRoutes from "./auth/auth.routes.js";
+import skriningOrangTuaRoutes from "./public/skriningOrangTua.js";
+import superAdminKelolaSekolahRoutes from "./superAdmin/superAdminKelolaSekolah.js";
 
 /**
  * Membuat router API.
@@ -21,7 +22,11 @@ export function createRouter({ config, cekDatabase }) {
   router.use("/auth", authRoutes);
 
   // Rute Publik Skrining ABK (Orang Tua / Siswa)
-  router.use("/public/skrining", skriningPublikRoutes);
+  router.use("/public/skrining", skriningOrangTuaRoutes);
+
+  // Rute Super Admin - Kelola Sekolah (CRU tanpa Delete)
+  router.use("/super-admin/sekolah", superAdminKelolaSekolahRoutes);
+  router.use("/admin/sekolah", superAdminKelolaSekolahRoutes);
 
   router.get("/health", async (req, res) => {
     const timestamp = new Date().toISOString();

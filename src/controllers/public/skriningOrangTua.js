@@ -3,9 +3,9 @@
  * Tanpa login: setiap masukan diperiksa validator lebih dulu, dan percobaan dialamatkan lewat token.
  */
 
-import ApiResponse from "../utils/apiResponse.js";
-import { prisma } from "../lib/prisma.js";
-import * as layanan from "../services/skriningPublik.js";
+import ApiResponse from "../../utils/apiResponse.js";
+import { prisma } from "../../lib/prisma.js";
+import * as layanan from "../../services/public/skriningOrangTua.js";
 import {
   validasiKode,
   validasiKataKunci,
@@ -13,7 +13,7 @@ import {
   validasiIdAngka,
   validasiMulai,
   validasiJawaban
-} from "../validators/skriningPublik.js";
+} from "../../validators/public/skriningOrangTua.js";
 
 /** POST /api/public/skrining/sesi/validasi */
 export async function validasiSesi(req, res, next) {

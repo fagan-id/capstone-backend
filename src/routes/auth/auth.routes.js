@@ -4,8 +4,8 @@
  */
 
 import { Router } from "express";
-import { AuthController } from "../controllers/auth.controller.js";
-import { verifyToken } from "../middlewares/auth.middleware.js";
+import { AuthController } from "../../controllers/auth/auth.controller.js";
+import { verifyToken } from "../../middlewares/auth.middleware.js";
 
 const router = Router();
 
