@@ -1,0 +1,441 @@
+{
+  "info": {
+    "name": "Capstone Backend - Skrining ABK",
+    "description": "Dokumentasi API backend skrining SD.\n\n**Isi:** health check, autentikasi (Super Admin & Sekolah), dan alur skrining publik untuk orang tua/wali.\n\n## Cara pakai\n\n1. Jalankan server: `npm run dev` (default `http://localhost:5000`).\n2. Isi variabel koleksi `identifier` dan `password` (lihat `SEED_PASSWORD` di `.env` Anda).\n3. Jalankan request berurutan dari atas ke bawah. Setiap request menyimpan nilai yang dibutuhkan request berikutnya (token, kode sesi, id siswa) ke variabel koleksi secara otomatis.\n\n## Bentuk respons\n\nSukses: `{ \"success\": true, \"message\": \"...\", \"data\": { ... } }`\n\nGagal: `{ \"success\": false, \"message\": \"...\", \"details\": { ... } }`\n\n## Catatan\n\n- Alur skrining publik **tidak** memakai login. Satu percobaan pengisian dialamatkan lewat `token` berbentuk UUID, bukan id berurut.\n- Skor opsi jawaban tidak pernah dikirim ke peserta.\n- Impor ke Hoppscotch: *Collections -> Import -> Postman*. Script penyimpan variabel tidak terbawa, jadi di Hoppscotch isi variabel secara manual.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string",
+      "description": "Host server. Ubah bila PORT di .env bukan 5000."
+    },
+    {
+      "key": "identifier",
+      "value": "superadmin@demo.test",
+      "type": "string",
+      "description": "Email atau username akun. Akun demo dibuat oleh `npm run db:seed`."
+    },
+    {
+      "key": "password",
+      "value": "",
+      "type": "string",
+      "description": "Isi sendiri dengan nilai SEED_PASSWORD dari .env Anda. Jangan di-commit."
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string",
+      "description": "Terisi otomatis oleh request Login."
+    },
+    {
+      "key": "kode_sesi",
+      "value": "ABC123",
+      "type": "string",
+      "description": "Kode sesi skrining dari sekolah. Satu kode dipakai bersama seluruh orang tua di sesi itu."
+    },
+    {
+      "key": "siswa_id",
+      "value": "",
+      "type": "string",
+      "description": "Terisi otomatis oleh request Cari Siswa."
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string",
+      "description": "Token percobaan pengisian (UUID). Terisi otomatis oleh request Mulai Skrining."
+    },
+    {
+      "key": "pertanyaan_id",
+      "value": "",
+      "type": "string",
+      "description": "Terisi otomatis oleh request Daftar Pertanyaan."
+    },
+    {
+      "key": "opsi_jawaban_id",
+      "value": "",
+      "type": "string",
+      "description": "Terisi otomatis oleh request Daftar Pertanyaan."
+    },
+    {
+      "key": "tes_skrining_id",
+      "value": "",
+      "type": "string",
+      "description": "Id instrumen lanjutan yang sedang aktif. Terisi otomatis oleh request Dashboard Tindak Lanjut."
+    }
+  ],
+  "item": [
+    {
+      "name": "Sistem",
+      "description": "Pemeriksaan kesehatan server dan database.",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "health"]
+            },
+            "description": "Memeriksa server dan koneksi database.\n\n- `200` server normal, `data.database` = `terhubung`\n- `503` server hidup tetapi database tidak dapat dijangkau, `details.database` = `tidak_terhubung`\n\nPesan error database asli tidak pernah dibocorkan ke klien."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Autentikasi",
+      "description": "Login multi-tabel untuk Super Admin dan Sekolah. Token dikirim lewat body respons sekaligus cookie HTTP-only bernama `token`.",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (pm.response.code === 200 && body.data && body.data.token) {",
+                  "  pm.collectionVariables.set(\"auth_token\", body.data.token);",
+                  "  console.log(\"auth_token tersimpan, role:\", body.data.role);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"{{identifier}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Masuk sebagai Super Admin atau Sekolah.\n\n`identifier` menerima email atau username. Akun dicari di tabel `super_admin` lebih dulu, lalu `sekolah`.\n\n**Body:**\n\n| Field | Tipe | Wajib |\n|---|---|---|\n| `identifier` | string | ya |\n| `password` | string | ya |\n\n**Respons 200** berisi `data.token`, `data.role` (`SUPER_ADMIN` atau `SEKOLAH`), `data.redirectTo`, dan `data.user`. Token juga diset sebagai cookie HTTP-only.\n\n**Error:** `400` field kosong, `401` kredensial tidak valid, `403` akun dinonaktifkan.\n\nScript request ini menyimpan token ke variabel `auth_token`."
+          },
+          "response": []
+        },
+        {
+          "name": "Profil Saya",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{auth_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "me"]
+            },
+            "description": "Mengambil profil pengguna dari token aktif. **Butuh autentikasi.**\n\nToken dibaca dari header `Authorization: Bearer <token>`, atau dari cookie `token` bila header tidak ada.\n\n**Error:** `401` token tidak ada, tidak valid, atau kedaluwarsa. `404` akun sudah dinonaktifkan."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "logout"]
+            },
+            "description": "Menghapus cookie `token`.\n\nCatatan: JWT bersifat stateless, jadi token yang sudah dipegang klien tetap sah sampai kedaluwarsa. Endpoint ini hanya membersihkan cookie."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Skrining Publik (Orang Tua / Wali)",
+      "description": "Alur pengisian skrining tanpa login, berurutan dari kode sesi sampai bagian lanjutan selesai.\n\nJalankan request pada folder ini dari atas ke bawah: tiap request mengisi variabel yang dipakai request berikutnya.",
+      "item": [
+        {
+          "name": "1. Validasi Kode Sesi",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (pm.response.code === 200 && body.data) {",
+                  "  pm.collectionVariables.set(\"kode_sesi\", body.data.kode);",
+                  "  console.log(\"sesi milik:\", body.data.sekolah.nama);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kode\": \"{{kode_sesi}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/public/skrining/sesi/validasi",
+              "host": ["{{base_url}}"],
+              "path": ["api", "public", "skrining", "sesi", "validasi"]
+            },
+            "description": "Layar 1-2. Memeriksa kode sesi dan menampilkan identitas sekolah penyelenggara.\n\nKode dirapikan dan diubah ke huruf besar sebelum dicari.\n\n**Body:** `kode` (string, wajib).\n\n**Respons 200:** `data.sekolah` berisi nama, NPSN, alamat, kontak. Kolom `username` dan `password_hash` sekolah tidak pernah dikirim.\n\n**Error:** `400` kode kosong, sesi belum dimulai, atau sesi sudah ditutup. `404` kode tidak ditemukan."
+          },
+          "response": []
+        },
+        {
+          "name": "2. Cari Siswa",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (pm.response.code === 200 && Array.isArray(body.data) && body.data.length > 0) {",
+                  "  pm.collectionVariables.set(\"siswa_id\", String(body.data[0].id));",
+                  "  console.log(\"siswa dipilih:\", body.data[0].nama, body.data[0].kelas);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/public/skrining/sesi/{{kode_sesi}}/siswa?search=Siswa",
+              "host": ["{{base_url}}"],
+              "path": ["api", "public", "skrining", "sesi", "{{kode_sesi}}", "siswa"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "Siswa",
+                  "description": "Potongan nama anak, minimal 3 karakter."
+                }
+              ]
+            },
+            "description": "Layar 3. Mencari nama anak di sekolah penyelenggara sesi, untuk autocomplete.\n\nHasil dibatasi 10 nama dan **hanya** memuat `id`, `nama`, `kelas`. NISN dan jenis kelamin tidak dikirim, supaya daftar siswa tidak bisa dipanen lewat endpoint terbuka ini.\n\n**Query:** `search` (string, wajib, minimal 3 karakter).\n\n**Error:** `400` kata kunci kurang dari 3 karakter. `404` kode sesi tidak ditemukan."
+          },
+          "response": []
+        },
+        {
+          "name": "3. Konfirmasi Data Anak",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/public/skrining/sesi/{{kode_sesi}}/siswa/{{siswa_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "public", "skrining", "sesi", "{{kode_sesi}}", "siswa", "{{siswa_id}}"]
+            },
+            "description": "Layar 4. Menampilkan satu anak untuk dikonfirmasi orang tua.\n\n**Respons 200:** `nama`, `kelas`, dan `status_percobaan` (`belum_mulai`, `sedang_berjalan`, atau `selesai`).\n\n**Error:** `400` id bukan angka positif. `404` anak tidak terdaftar di sekolah penyelenggara sesi ini."
+          },
+          "response": []
+        },
+        {
+          "name": "4. Mulai Skrining (Persetujuan)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data && body.data.token) {",
+                  "  pm.collectionVariables.set(\"token\", body.data.token);",
+                  "  console.log(\"token percobaan tersimpan untuk:\", body.data.nama_siswa);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kode\": \"{{kode_sesi}}\",\n  \"siswa_id\": {{siswa_id}},\n  \"nama_responden\": \"Ibu Contoh\",\n  \"nomor_hp_responden\": \"08123456789\",\n  \"hubungan_responden\": \"orang_tua\",\n  \"persetujuan\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/public/skrining/mulai",
+              "host": ["{{base_url}}"],
+              "path": ["api", "public", "skrining", "mulai"]
+            },
+            "description": "Layar 5-6. Mencatat data responden dan persetujuan, lalu membuka percobaan pengisian.\n\n**Body:**\n\n| Field | Tipe | Keterangan |\n|---|---|---|\n| `kode` | string | kode sesi |\n| `siswa_id` | number | id anak |\n| `nama_responden` | string | nama orang tua/wali |\n| `nomor_hp_responden` | string | hanya angka, boleh `+`, spasi, `-` |\n| `hubungan_responden` | string | `orang_tua`, `wali`, atau `lainnya` |\n| `persetujuan` | boolean | harus `true` |\n\n**Respons 201:** `data.token` (UUID) dipakai seluruh request berikutnya, plus baris instrumen Skrining Awal.\n\nMemanggil ulang dengan anak yang sama di sesi yang sama **tidak** membuat percobaan baru; token yang sama dikembalikan agar pengisian bisa dilanjutkan.\n\n**Error:** `400` persetujuan bukan `true`, hubungan di luar daftar, nomor HP tidak valid, atau field wajib kosong. `404` anak tidak ada di sekolah sesi ini."
+          },
+          "response": []
+        },
+        {
+          "name": "5. Daftar Pertanyaan Skrining Awal",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (pm.response.code !== 200 || !body.data) { return; }",
+                  "const belum = body.data.pertanyaan.find((p) => p.jawaban_terpilih === null);",
+                  "const butir = belum || body.data.pertanyaan[0];",
+                  "if (butir) {",
+                  "  pm.collectionVariables.set(\"pertanyaan_id\", String(butir.id));",
+                  "  pm.collectionVariables.set(\"opsi_jawaban_id\", String(butir.opsi_jawaban[0].id));",
+                  "  console.log(`butir ${butir.nomor_urut} siap dijawab; progres ${body.data.total_dijawab}/${body.data.total_soal}`);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/public/skrining/{{token}}/pertanyaan",
+              "host": ["{{base_url}}"],
+              "path": ["api", "public", "skrining", "{{token}}", "pertanyaan"]
+            },
+            "description": "Layar 7. Memuat seluruh butir Skrining Awal beserta jawaban yang sudah tersimpan.\n\n**Respons 200:** `total_soal`, `total_dijawab`, dan `pertanyaan[]`. Tiap butir memuat `opsi_jawaban[]` serta `jawaban_terpilih` (`null` bila belum dijawab), sehingga pengisian bisa dilanjutkan setelah halaman ditutup.\n\n`skor` setiap opsi **tidak** disertakan, supaya peserta tidak bisa menebak jawaban mana yang dianggap bermasalah.\n\n**Error:** `400` token bukan UUID. `404` token tidak dikenal.\n\nScript request ini mengisi `pertanyaan_id` dan `opsi_jawaban_id` dengan butir pertama yang belum dijawab."
+          },
+          "response": []
+        },
+        {
+          "name": "6. Simpan Jawaban (Autosave)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pertanyaan_id\": {{pertanyaan_id}},\n  \"opsi_jawaban_id\": {{opsi_jawaban_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/public/skrining/{{token}}/jawaban",
+              "host": ["{{base_url}}"],
+              "path": ["api", "public", "skrining", "{{token}}", "jawaban"]
+            },
+            "description": "Autosave satu jawaban (dipakai di layar 7, 11, 15).\n\nDipanggil setiap kali orang tua memilih opsi. Menjawab ulang butir yang sama **menimpa** barisnya, tidak menambah baris baru.\n\n**Body:** `pertanyaan_id` (number), `opsi_jawaban_id` (number).\n\n**Respons 200:** `total_dijawab` sebagai indikator progres.\n\n**Error:** `400` id tidak valid, opsi tidak cocok dengan pertanyaannya, atau percobaan sudah dikirim. `404` token tidak dikenal.\n\nUntuk mengisi seluruh butir, jalankan request 5 lalu 6 bergantian sampai `total_dijawab` sama dengan `total_soal`."
+          },
+          "response": []
+        },
+        {
+          "name": "7. Kirim Skrining Awal",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/public/skrining/{{token}}/submit-level-1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "public", "skrining", "{{token}}", "submit-level-1"]
+            },
+            "description": "Layar 8-9. Mengirim Skrining Awal, menilai per domain, lalu menentukan bagian lanjutan.\n\nPenilaian memakai aturan DSM-5 per butir: tiap domain dibandingkan lewat **skor tertinggi** salah satu butirnya terhadap ambang domain itu, bukan jumlah seluruh skor. Satu gejala berat tidak bisa tertutup oleh jawaban aman lainnya.\n\nHasil tiap domain disimpan bersama ambang yang dipakai saat itu, jadi Super Admin yang mengubah ambang di kemudian hari tidak mengubah hasil yang sudah tercatat.\n\n**Respons 200:**\n\n- `selesai: false` -> ada domain terindikasi, lanjut ke request 8\n- `selesai: true` -> tidak ada domain terindikasi, percobaan ditutup\n\n**Error:** `400` masih ada butir yang belum dijawab (`details.belum_dijawab` memuat daftarnya), atau percobaan sudah pernah dikirim. `404` token tidak dikenal."
+          },
+          "response": []
+        },
+        {
+          "name": "8. Dashboard Bagian Lanjutan",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (pm.response.code !== 200 || !body.data) { return; }",
+                  "const aktif = body.data.daftar_instrumen.find((i) => i.status === \"aktif\");",
+                  "if (aktif) {",
+                  "  pm.collectionVariables.set(\"tes_skrining_id\", String(aktif.tes_skrining_id));",
+                  "  console.log(\"bagian aktif:\", aktif.label);",
+                  "} else {",
+                  "  console.log(\"tidak ada bagian aktif; seluruh selesai:\", body.data.seluruh_selesai);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/public/skrining/{{token}}/tindak-lanjut",
+              "host": ["{{base_url}}"],
+              "path": ["api", "public", "skrining", "{{token}}", "tindak-lanjut"]
+            },
+            "description": "Layar 10, 14, 18. Menampilkan bagian lanjutan yang ditugaskan beserta progresnya.\n\nHanya domain yang terindikasi mendapat instrumen lanjutan. Urutan pengerjaan tetap, mengikuti urutan domain.\n\nBagian lanjutan diberi label netral (`Bagian lanjutan 1`, `Bagian lanjutan 2`). Nama domain seperti \"Inatensi\" atau \"Depresi\" sengaja tidak dikirim, supaya orang tua tidak membaca hasil ini sebagai diagnosis.\n\n**Status tiap bagian:** `selesai`, `aktif` (boleh dikerjakan sekarang), `terkunci` (menunggu bagian sebelumnya).\n\nScript request ini mengisi `tes_skrining_id` dengan bagian yang berstatus `aktif`."
+          },
+          "response": []
+        },
+        {
+          "name": "9. Daftar Pertanyaan Bagian Lanjutan",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (pm.response.code !== 200 || !body.data) { return; }",
+                  "const belum = body.data.pertanyaan.find((p) => p.jawaban_terpilih === null);",
+                  "const butir = belum || body.data.pertanyaan[0];",
+                  "if (butir) {",
+                  "  pm.collectionVariables.set(\"pertanyaan_id\", String(butir.id));",
+                  "  pm.collectionVariables.set(\"opsi_jawaban_id\", String(butir.opsi_jawaban[0].id));",
+                  "  console.log(`${body.data.label}: butir ${butir.nomor_urut}, progres ${body.data.total_dijawab}/${body.data.total_soal}`);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/public/skrining/{{token}}/tindak-lanjut/{{tes_skrining_id}}/pertanyaan",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "public",
+                "skrining",
+                "{{token}}",
+                "tindak-lanjut",
+                "{{tes_skrining_id}}",
+                "pertanyaan"
+              ]
+            },
+            "description": "Layar 11, 15. Memuat butir satu bagian lanjutan.\n\nBentuk respons sama dengan request 5, ditambah `label` netral bagian ini.\n\nSimpan jawaban memakai request 6 (endpoint autosave sama untuk semua instrumen).\n\n**Error:** `400` token tidak valid, id instrumen bukan angka, atau bagian sebelumnya belum selesai sehingga bagian ini masih terkunci. `404` bagian ini tidak ditugaskan untuk anak tersebut."
+          },
+          "response": []
+        },
+        {
+          "name": "10. Kirim Bagian Lanjutan",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/public/skrining/{{token}}/tindak-lanjut/{{tes_skrining_id}}/submit",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "public",
+                "skrining",
+                "{{token}}",
+                "tindak-lanjut",
+                "{{tes_skrining_id}}",
+                "submit"
+              ]
+            },
+            "description": "Layar 12-13, 16-17. Mengirim satu bagian lanjutan dan membuka bagian berikutnya.\n\nTotal skor bagian ini disimpan, lalu bagian berikutnya berubah dari `terkunci` menjadi `aktif`.\n\n**Respons 200:**\n\n- `selesai: false` -> masih ada bagian lain, kembali ke request 8\n- `selesai: true` -> seluruh pengisian selesai dan percobaan ditutup\n\n**Error:** `400` masih ada butir belum dijawab, bagian sudah pernah dikirim, atau bagian sebelumnya belum selesai. `404` bagian tidak ditugaskan."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
