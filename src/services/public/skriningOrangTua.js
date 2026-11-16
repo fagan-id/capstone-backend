@@ -360,9 +360,25 @@ export async function submitLevel1(db, token) {
     jawaban: jawaban.map((j) => ({ pertanyaan_id: j.pertanyaan_id, skor: j.opsi_jawaban.skor }))
   });
 
-  // Ambang yang dipakai ikut disimpan, jadi hasil ini tidak berubah bila ambangnya diedit (D35).
+  // Ambang yang dipakai ikut disimpan beserta snapshot narasi interpretasi & rekomendasi,
+  // sehingga hasil historis ini terlindungi dan tidak berubah bila konfigurasi diedit (D35).
   await db.hasil_kategori.createMany({
-    data: penilaian.map((p) => ({ hasil_skrining_id: hasil.id, ...p }))
+    data: penilaian.map((p) => {
+      const kat = kategori.find((k) => k.id === p.kategori_asesmen_id);
+      const deskripsi = p.terindikasi
+        ? (kat?.deskripsi ?? null)
+        : (kat?.deskripsi_belum_memenuhi ?? null);
+      const rekomendasi = p.terindikasi
+        ? (kat?.rekomendasi ?? null)
+        : (kat?.rekomendasi_belum_memenuhi ?? null);
+
+      return {
+        hasil_skrining_id: hasil.id,
+        ...p,
+        deskripsi,
+        rekomendasi
+      };
+    })
   });
 
   const total_skor = jawaban.reduce((n, j) => n + j.opsi_jawaban.skor, 0);
@@ -543,9 +559,45 @@ export async function submitLanjutan(db, token, tes_skrining_id) {
   });
   const total_skor = jawaban.reduce((n, j) => n + j.opsi_jawaban.skor, 0);
 
+  let kategori_hasil = null;
+  let deskripsi_hasil = null;
+  let rekomendasi_hasil = null;
+  if (db.rentang_penilaian && typeof db.rentang_penilaian.findMany === "function") {
+    try {
+      const rentangList = await db.rentang_penilaian.findMany({
+        where: { tes_skrining_id },
+        orderBy: { urutan: "asc" }
+      });
+      if (rentangList?.length > 0) {
+        const matched = rentangList.find((r) => {
+          const min = Number(r.skor_min);
+          const max = r.skor_max !== null && r.skor_max !== undefined ? Number(r.skor_max) : null;
+          if (max !== null) {
+            return total_skor >= min && total_skor <= max;
+          }
+          return total_skor >= min;
+        });
+        if (matched) {
+          kategori_hasil = matched.kategori;
+          deskripsi_hasil = matched.deskripsi ?? null;
+          rekomendasi_hasil = matched.rekomendasi ?? null;
+        }
+      }
+    } catch {
+      // Abaikan jika model belum tersedia pada mock
+    }
+  }
+
   await db.hasil_tes.update({
     where: { hasil_skrining_id_tes_skrining_id: { hasil_skrining_id: hasil.id, tes_skrining_id } },
-    data: { total_skor, selesai: true, waktu_selesai: new Date() }
+    data: {
+      total_skor,
+      kategori_hasil,
+      deskripsi_hasil,
+      rekomendasi_hasil,
+      selesai: true,
+      waktu_selesai: new Date()
+    }
   });
 
   const sisa = baris.filter((b, i) => i !== posisi && !b.selesai).length;

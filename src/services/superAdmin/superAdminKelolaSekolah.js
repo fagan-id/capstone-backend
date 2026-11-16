@@ -225,25 +225,42 @@ export async function tambahSekolah(db, data) {
   const password_hash = await bcrypt.hash(data.password, 10);
 
   // 6. Simpan baris sekolah baru
-  const baru = await db.sekolah.create({
-    data: {
-      npsn,
-      nama: data.nama,
-      email: data.email,
-      username,
-      password_hash,
-      alamat: data.alamat ?? null,
-      kontak_telepon: data.kontak_telepon ?? null,
-      aktif: data.aktif !== undefined ? Boolean(data.aktif) : true
-    },
-    include: {
-      _count: {
-        select: { sesi_skrining: true }
+  try {
+    const baru = await db.sekolah.create({
+      data: {
+        npsn,
+        nama: data.nama,
+        email: data.email,
+        username,
+        password_hash,
+        alamat: data.alamat ?? null,
+        kontak_telepon: data.kontak_telepon ?? null,
+        aktif: data.aktif !== undefined ? Boolean(data.aktif) : true
+      },
+      include: {
+        _count: {
+          select: { sesi_skrining: true }
+        }
       }
-    }
-  });
+    });
 
-  return formatSekolah(baru);
+    return formatSekolah(baru);
+  } catch (err) {
+    if (err.code === "P2002") {
+      const target = Array.isArray(err.meta?.target) ? err.meta.target.join(", ") : String(err.meta?.target || "");
+      if (target.includes("email")) {
+        throw AppError.conflict("Email admin sekolah sudah terdaftar.");
+      }
+      if (target.includes("npsn")) {
+        throw AppError.conflict("NPSN sudah terdaftar pada sekolah lain.");
+      }
+      if (target.includes("username")) {
+        throw AppError.conflict("Username sudah digunakan oleh akun lain.");
+      }
+      throw AppError.conflict("Terjadi konflik data unik pada data sekolah.");
+    }
+    throw err;
+  }
 }
 
 /**
@@ -340,15 +357,32 @@ export async function updateSekolah(db, id, data) {
   }
 
   // 6. Jalankan update di database
-  const updated = await db.sekolah.update({
-    where: { id },
-    data: updateData,
-    include: {
-      _count: {
-        select: { sesi_skrining: true }
+  try {
+    const updated = await db.sekolah.update({
+      where: { id },
+      data: updateData,
+      include: {
+        _count: {
+          select: { sesi_skrining: true }
+        }
       }
-    }
-  });
+    });
 
-  return formatSekolah(updated);
+    return formatSekolah(updated);
+  } catch (err) {
+    if (err.code === "P2002") {
+      const target = Array.isArray(err.meta?.target) ? err.meta.target.join(", ") : String(err.meta?.target || "");
+      if (target.includes("email")) {
+        throw AppError.conflict("Email sudah digunakan oleh sekolah lain.");
+      }
+      if (target.includes("npsn")) {
+        throw AppError.conflict("NPSN sudah terdaftar pada sekolah lain.");
+      }
+      if (target.includes("username")) {
+        throw AppError.conflict("Username sudah digunakan oleh akun lain.");
+      }
+      throw AppError.conflict("Terjadi konflik data unik pada data sekolah.");
+    }
+    throw err;
+  }
 }

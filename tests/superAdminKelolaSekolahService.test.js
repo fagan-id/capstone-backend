@@ -295,3 +295,63 @@ test("sekolahService.updateSekolah meng-hash password baru bila disediakan", asy
   const isValid = await bcrypt.compare("PasswordBaruGanti456!", updatedPayload.password_hash);
   assert.equal(isValid, true);
 });
+
+test("sekolahService.tambahSekolah menangani error Prisma P2002 (unique constraint failed saat create)", async () => {
+  const prismaError = new Error("Unique constraint failed");
+  prismaError.code = "P2002";
+  prismaError.meta = { target: ["email"] };
+
+  const mockDb = {
+    sekolah: {
+      findUnique: async () => null,
+      create: async () => {
+        throw prismaError;
+      }
+    },
+    super_admin: { findUnique: async () => null }
+  };
+
+  await assert.rejects(
+    async () =>
+      sekolahService.tambahSekolah(mockDb, {
+        nama: "SD Cempaka",
+        email: "cempaka@test.sch.id",
+        password: "Password123!"
+      }),
+    (err) => err.statusCode === 409 && /Email admin sekolah sudah terdaftar/.test(err.message)
+  );
+});
+
+test("sekolahService.updateSekolah menangani error Prisma P2002 (unique constraint failed saat update)", async () => {
+  const existingSekolah = {
+    id: 1,
+    nama: "SD Lama",
+    email: "lama@sekolah.sch.id",
+    username: "sd_lama",
+    password_hash: "hash_lama",
+    aktif: true
+  };
+
+  const prismaError = new Error("Unique constraint failed");
+  prismaError.code = "P2002";
+  prismaError.meta = { target: ["username"] };
+
+  const mockDb = {
+    sekolah: {
+      findUnique: async () => existingSekolah,
+      findFirst: async () => null,
+      update: async () => {
+        throw prismaError;
+      }
+    },
+    super_admin: { findUnique: async () => null }
+  };
+
+  await assert.rejects(
+    async () =>
+      sekolahService.updateSekolah(mockDb, 1, {
+        username: "sd_bentrok"
+      }),
+    (err) => err.statusCode === 409 && /Username sudah digunakan oleh akun lain/.test(err.message)
+  );
+});

@@ -170,8 +170,12 @@ test("POST /api/super-admin/sekolah membuat sekolah baru", async () => {
 
   const originalFindUnique = prisma.sekolah.findUnique;
   const originalCreate = prisma.sekolah.create;
+  const originalAdminFindUnique = prisma.super_admin?.findUnique;
 
   prisma.sekolah.findUnique = async () => null;
+  if (prisma.super_admin) {
+    prisma.super_admin.findUnique = async () => null;
+  }
   prisma.sekolah.create = async ({ data }) => ({
     id: 15,
     ...data,
@@ -221,6 +225,9 @@ test("POST /api/super-admin/sekolah membuat sekolah baru", async () => {
   } finally {
     prisma.sekolah.findUnique = originalFindUnique;
     prisma.sekolah.create = originalCreate;
+    if (prisma.super_admin && originalAdminFindUnique) {
+      prisma.super_admin.findUnique = originalAdminFindUnique;
+    }
   }
 });
 
@@ -242,9 +249,13 @@ test("PUT dan PATCH /api/super-admin/sekolah/:id memperbarui data sekolah", asyn
   const originalFindUnique = prisma.sekolah.findUnique;
   const originalFindFirst = prisma.sekolah.findFirst;
   const originalUpdate = prisma.sekolah.update;
+  const originalAdminFindUnique = prisma.super_admin?.findUnique;
 
   prisma.sekolah.findUnique = async ({ where }) => (where.id === 1 ? existing : null);
   prisma.sekolah.findFirst = async () => null;
+  if (prisma.super_admin) {
+    prisma.super_admin.findUnique = async () => null;
+  }
   prisma.sekolah.update = async ({ data }) => ({
     ...existing,
     ...data,
@@ -297,6 +308,9 @@ test("PUT dan PATCH /api/super-admin/sekolah/:id memperbarui data sekolah", asyn
     prisma.sekolah.findUnique = originalFindUnique;
     prisma.sekolah.findFirst = originalFindFirst;
     prisma.sekolah.update = originalUpdate;
+    if (prisma.super_admin && originalAdminFindUnique) {
+      prisma.super_admin.findUnique = originalAdminFindUnique;
+    }
   }
 });
 
