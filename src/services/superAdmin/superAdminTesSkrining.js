@@ -434,6 +434,10 @@ export async function updateOverviewTesSkrining(db, id, data) {
     : null;
 
   if (data.kategori_asesmen_id !== undefined) {
+    if (level !== 2) {
+      throw AppError.badRequest("Domain hanya dapat ditautkan ke tes Level 2.");
+    }
+
     const domainBaru = await db.kategori_asesmen.findUnique({
       where: { id: data.kategori_asesmen_id }
     });

@@ -87,4 +87,4 @@ Token login dikirim di body respons dan sebagai cookie HTTP-only `token`. Endpoi
 ## Dokumentasi & Pengujian API
 
 - Keputusan desain, spesifikasi, dan rencana kerja ada di folder `docs/`.
-- Koleksi Postman (bisa diimpor ke Hoppscotch) ada di folder `postman/` (lihat [panduan Postman](postman/README.md)). Koleksi ini mencakup health, autentikasi, dan alur skrining publik; endpoint Super Admin belum dimasukkan.
+- Koleksi Postman (bisa diimpor ke Hoppscotch) ada di folder `postman/` (lihat [panduan Postman](postman/README.md)). Koleksi ini mencakup health, autentikasi, alur skrining publik, dan seluruh endpoint Super Admin.

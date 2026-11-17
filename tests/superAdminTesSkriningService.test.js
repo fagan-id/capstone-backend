@@ -366,6 +366,29 @@ test("tesSkriningService.updateOverviewTesSkrining menolak perubahan level jika 
   );
 });
 
+test("tesSkriningService.updateOverviewTesSkrining menolak menautkan domain ke tes Level 1 (400)", async () => {
+  let ditautkan = false;
+  const mockDb = {
+    tes_skrining: {
+      findUnique: async () => ({
+        id: 1, nama: "Skrining Awal", level: 1, jenjang: "SD", deskripsi: "-", aktif: true,
+        _count: { pertanyaan: 5, hasil_tes: 0 }, kategori_asesmen: []
+      })
+    },
+    kategori_asesmen: {
+      findUnique: async () => ({ id: 3, nama: "Inatensi" }),
+      updateMany: async () => { ditautkan = true; },
+      update: async () => { ditautkan = true; }
+    }
+  };
+
+  await assert.rejects(
+    async () => tesSkriningService.updateOverviewTesSkrining(mockDb, 1, { kategori_asesmen_id: 3 }),
+    (err) => err.statusCode === 400 && /Level 2/.test(err.message)
+  );
+  assert.equal(ditautkan, false);
+});
+
 test("tesSkriningService.updateOverviewTesSkrining menolak konflik nama dengan tes lain (409)", async () => {
   const existing = {
     id: 1,
