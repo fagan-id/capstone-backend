@@ -29,17 +29,17 @@ test("Integration: Alur login Super Admin, akses /me, dan logout", async () => {
   const plainPassword = "Password123!";
   const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
-  const originalAdminFindFirst = prisma.superAdmin.findFirst;
-  prisma.superAdmin.findFirst = async ({ where }) => {
+  const originalAdminFindFirst = prisma.super_admin.findFirst;
+  prisma.super_admin.findFirst = async ({ where }) => {
     // Dipanggil saat login atau saat /me
     return {
-      idAdmin: 1,
-      username: "superadmin",
+      id: 1,
+      nama: "superadmin",
       email: "admin@skriningabk.id",
-      password: hashedPassword,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      deletedAt: null
+      password_hash: hashedPassword,
+      aktif: true,
+      created_at: new Date(),
+      updated_at: new Date()
     };
   };
 
@@ -87,7 +87,7 @@ test("Integration: Alur login Super Admin, akses /me, dan logout", async () => {
       assert.equal(logoutData.success, true);
     });
   } finally {
-    prisma.superAdmin.findFirst = originalAdminFindFirst;
+    prisma.super_admin.findFirst = originalAdminFindFirst;
   }
 });
 
@@ -95,24 +95,22 @@ test("Integration: Alur login Sekolah aktif dan penolakan akun nonaktif", async 
   const plainPassword = "Password123!";
   const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
-  const originalAdminFindFirst = prisma.superAdmin.findFirst;
+  const originalAdminFindFirst = prisma.super_admin.findFirst;
   const originalSekolahFindFirst = prisma.sekolah.findFirst;
 
-  prisma.superAdmin.findFirst = async () => null;
+  prisma.super_admin.findFirst = async () => null;
 
   try {
     await denganServer(async (baseUrl) => {
       // 1. Login Sekolah Aktif
       prisma.sekolah.findFirst = async () => ({
-        idSchool: 5,
-        adminId: 1,
-        schoolName: "SDN Sukamaju 01",
+        id: 5,
+        nama: "SDN Sukamaju 01",
         email: "sdnsukamaju01@sch.id",
-        password: hashedPassword,
+        password_hash: hashedPassword,
         alamat: "Jl. Pendidikan No. 1",
-        kontakTelepon: "081234567890",
-        statusAktif: true,
-        deletedAt: null
+        kontak_telepon: "081234567890",
+        aktif: true
       });
 
       const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
@@ -131,13 +129,11 @@ test("Integration: Alur login Sekolah aktif dan penolakan akun nonaktif", async 
 
       // 2. Login Sekolah Nonaktif (harus 403)
       prisma.sekolah.findFirst = async () => ({
-        idSchool: 6,
-        adminId: 1,
-        schoolName: "SDN Nonaktif 02",
+        id: 6,
+        nama: "SDN Nonaktif 02",
         email: "sdnnonaktif@sch.id",
-        password: hashedPassword,
-        statusAktif: false,
-        deletedAt: null
+        password_hash: hashedPassword,
+        aktif: false
       });
 
       const inactiveRes = await fetch(`${baseUrl}/api/auth/login`, {
@@ -155,7 +151,7 @@ test("Integration: Alur login Sekolah aktif dan penolakan akun nonaktif", async 
       assert.match(inactiveData.message, /Akun sekolah dinonaktifkan/);
     });
   } finally {
-    prisma.superAdmin.findFirst = originalAdminFindFirst;
+    prisma.super_admin.findFirst = originalAdminFindFirst;
     prisma.sekolah.findFirst = originalSekolahFindFirst;
   }
 });

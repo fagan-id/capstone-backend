@@ -189,7 +189,7 @@ export async function tambahSekolah(db, data) {
   }
 
   // 2. Cek keunikan email di tabel super_admin
-  const superAdminModel = db.super_admin || db.superAdmin;
+  const superAdminModel = db.super_admin;
   if (superAdminModel && typeof superAdminModel.findUnique === "function") {
     const emailAdaDiAdmin = await superAdminModel.findUnique({
       where: { email: data.email }
@@ -300,7 +300,7 @@ export async function updateSekolah(db, id, data) {
       throw AppError.conflict("Email sudah digunakan oleh sekolah lain.");
     }
 
-    const superAdminModel = db.super_admin || db.superAdmin;
+    const superAdminModel = db.super_admin;
     if (superAdminModel && typeof superAdminModel.findUnique === "function") {
       const emailAdaDiAdmin = await superAdminModel.findUnique({
         where: { email: data.email }

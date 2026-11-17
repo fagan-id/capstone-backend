@@ -10,6 +10,23 @@ import { config } from "../../config/index.js";
 import ApiResponse from "../../utils/apiResponse.js";
 import AppError from "../../utils/appError.js";
 
+const PESAN_SEKOLAH_NONAKTIF = "Akun sekolah dinonaktifkan. Silakan hubungi Super Admin.";
+
+/**
+ * Menandatangani JWT lalu menyimpannya sebagai cookie HTTP-only.
+ * @returns {string} token
+ */
+function terbitkanToken(res, payload) {
+  const token = jwt.sign(payload, config.jwt.secret, { expiresIn: config.jwt.expiresIn });
+  res.cookie("token", token, {
+    httpOnly: true,
+    secure: !config.isDevelopment,
+    sameSite: "lax",
+    maxAge: 24 * 60 * 60 * 1000 // 1 hari
+  });
+  return token;
+}
+
 export class AuthController {
   /**
    * POST /api/auth/login
@@ -20,8 +37,6 @@ export class AuthController {
       const { identifier, password } = req.body || {};
 
       if (
-        !identifier ||
-        !password ||
         typeof identifier !== "string" ||
         typeof password !== "string" ||
         !identifier.trim() ||
@@ -30,70 +45,23 @@ export class AuthController {
         throw AppError.badRequest("Identifier dan password wajib diisi.");
       }
 
-      const trimmedIdentifier = identifier.trim();
+      const id = identifier.trim();
 
-      // 1. Cari terlebih dahulu di tabel super_admin (email ATAU nama/username)
-      const adminModel = prisma.super_admin || prisma.superAdmin;
-      let superAdmin = null;
-      if (adminModel && typeof adminModel.findFirst === "function") {
-        superAdmin = await adminModel.findFirst({
-          where: {
-            OR: [
-              { email: trimmedIdentifier },
-              { username: trimmedIdentifier }
-            ],
-            deletedAt: null
-          }
-        }).catch(async () => {
-          return await adminModel.findFirst({
-            where: {
-              OR: [
-                { email: trimmedIdentifier },
-                { nama: trimmedIdentifier }
-              ],
-              aktif: true
-            }
-          }).catch(() => null);
-        });
-      }
+      // 1. Cari terlebih dahulu di tabel super_admin (email ATAU nama).
+      // Akun nonaktif tetap dicari agar ditolak dengan 403, bukan 401.
+      const superAdmin = await prisma.super_admin.findFirst({
+        where: { OR: [{ email: id }, { nama: id }] }
+      });
 
       if (superAdmin) {
-        const passwordHash = superAdmin.password_hash || superAdmin.password;
-        const isPasswordValid = await bcrypt.compare(password, passwordHash);
-        if (!isPasswordValid) {
+        if (!(await bcrypt.compare(password, superAdmin.password_hash))) {
           throw AppError.unauthorized("Kredensial tidak valid.");
         }
-
-        const isAktif = superAdmin.aktif !== undefined
-          ? superAdmin.aktif
-          : (superAdmin.deletedAt === null || superAdmin.deletedAt === undefined);
-
-        if (!isAktif) {
+        if (!superAdmin.aktif) {
           throw AppError.forbidden("Akun Super Admin dinonaktifkan.");
         }
 
-        const adminId = superAdmin.id ?? superAdmin.idAdmin;
-        const adminEmail = superAdmin.email;
-        const adminName = superAdmin.nama || superAdmin.username || "Super Admin";
-        const adminUsername = superAdmin.username || superAdmin.nama || "superadmin";
-
-        const tokenPayload = {
-          id: adminId,
-          role: "SUPER_ADMIN",
-          email: adminEmail
-        };
-
-        const token = jwt.sign(tokenPayload, config.jwt.secret, {
-          expiresIn: config.jwt.expiresIn
-        });
-
-        // Set HTTP-only cookie untuk keamanan ekstra
-        res.cookie("token", token, {
-          httpOnly: true,
-          secure: !config.isDevelopment,
-          sameSite: "lax",
-          maxAge: 24 * 60 * 60 * 1000 // 1 hari
-        });
+        const token = terbitkanToken(res, { id: superAdmin.id, role: "SUPER_ADMIN", email: superAdmin.email });
 
         return ApiResponse.success(res, {
           statusCode: 200,
@@ -103,74 +71,29 @@ export class AuthController {
             role: "SUPER_ADMIN",
             redirectTo: "/admin/dashboard",
             user: {
-              id: adminId,
-              nama: adminName,
-              username: adminUsername,
-              email: adminEmail
+              id: superAdmin.id,
+              nama: superAdmin.nama,
+              username: superAdmin.nama,
+              email: superAdmin.email
             }
           }
         });
       }
 
       // 2. Jika tidak ditemukan di super_admin, cari di tabel sekolah (email ATAU username)
-      const sekolahModel = prisma.sekolah;
-      let sekolah = null;
-      if (sekolahModel && typeof sekolahModel.findFirst === "function") {
-        sekolah = await sekolahModel.findFirst({
-          where: {
-            email: trimmedIdentifier,
-            deletedAt: null
-          }
-        }).catch(async () => {
-          return await sekolahModel.findFirst({
-            where: {
-              OR: [
-                { email: trimmedIdentifier },
-                { username: trimmedIdentifier }
-              ],
-              aktif: true
-            }
-          }).catch(() => null);
-        });
-      }
+      const sekolah = await prisma.sekolah.findFirst({
+        where: { OR: [{ email: id }, { username: id }] }
+      });
 
       if (sekolah) {
-        const passwordHash = sekolah.password_hash || sekolah.password;
-        const isPasswordValid = await bcrypt.compare(password, passwordHash);
-        if (!isPasswordValid) {
+        if (!(await bcrypt.compare(password, sekolah.password_hash))) {
           throw AppError.unauthorized("Kredensial tidak valid.");
         }
-
-        // Verifikasi status keaktifan akun sekolah
-        const isAktif = sekolah.aktif !== undefined
-          ? sekolah.aktif
-          : (sekolah.statusAktif !== undefined ? sekolah.statusAktif : (sekolah.deletedAt === null));
-
-        if (!isAktif) {
-          throw new AppError("Akun sekolah dinonaktifkan. Silakan hubungi Super Admin.", 403);
+        if (!sekolah.aktif) {
+          throw AppError.forbidden(PESAN_SEKOLAH_NONAKTIF);
         }
 
-        const schoolId = sekolah.id ?? sekolah.idSchool;
-        const schoolName = sekolah.nama || sekolah.schoolName;
-        const schoolEmail = sekolah.email;
-        const schoolPhone = sekolah.kontak_telepon || sekolah.kontakTelepon;
-
-        const tokenPayload = {
-          id: schoolId,
-          role: "SEKOLAH",
-          email: schoolEmail
-        };
-
-        const token = jwt.sign(tokenPayload, config.jwt.secret, {
-          expiresIn: config.jwt.expiresIn
-        });
-
-        res.cookie("token", token, {
-          httpOnly: true,
-          secure: !config.isDevelopment,
-          sameSite: "lax",
-          maxAge: 24 * 60 * 60 * 1000
-        });
+        const token = terbitkanToken(res, { id: sekolah.id, role: "SEKOLAH", email: sekolah.email });
 
         return ApiResponse.success(res, {
           statusCode: 200,
@@ -180,13 +103,13 @@ export class AuthController {
             role: "SEKOLAH",
             redirectTo: "/sekolah/dashboard",
             user: {
-              id: schoolId,
-              schoolName: schoolName,
-              nama: schoolName,
-              email: schoolEmail,
+              id: sekolah.id,
+              schoolName: sekolah.nama,
+              nama: sekolah.nama,
+              email: sekolah.email,
               alamat: sekolah.alamat,
-              kontakTelepon: schoolPhone,
-              kontak_telepon: schoolPhone
+              kontakTelepon: sekolah.kontak_telepon,
+              kontak_telepon: sekolah.kontak_telepon
             }
           }
         });
@@ -229,34 +152,11 @@ export class AuthController {
       const { id, role } = req.user;
 
       if (role === "SUPER_ADMIN") {
-        const adminModel = prisma.super_admin || prisma.superAdmin;
-        let admin = null;
-        if (adminModel && typeof adminModel.findFirst === "function") {
-          admin = await adminModel.findFirst({
-            where: {
-              OR: [
-                { idAdmin: id },
-                { id: id }
-              ],
-              deletedAt: null
-            }
-          }).catch(async () => {
-            return await adminModel.findFirst({
-              where: {
-                id: id,
-                aktif: true
-              }
-            }).catch(() => null);
-          });
-        }
+        const admin = await prisma.super_admin.findFirst({ where: { id, aktif: true } });
 
         if (!admin) {
           throw AppError.notFound("Pengguna Super Admin tidak ditemukan atau telah dinonaktifkan.");
         }
-
-        const adminId = admin.id ?? admin.idAdmin;
-        const adminName = admin.nama || admin.username || "Super Admin";
-        const adminUsername = admin.username || admin.nama || "superadmin";
 
         return ApiResponse.success(res, {
           statusCode: 200,
@@ -264,54 +164,26 @@ export class AuthController {
           data: {
             role: "SUPER_ADMIN",
             user: {
-              id: adminId,
-              nama: adminName,
-              username: adminUsername,
+              id: admin.id,
+              nama: admin.nama,
+              username: admin.nama,
               email: admin.email,
-              createdAt: admin.created_at || admin.createdAt,
-              updatedAt: admin.updated_at || admin.updatedAt
+              createdAt: admin.created_at,
+              updatedAt: admin.updated_at
             }
           }
         });
       }
 
       if (role === "SEKOLAH") {
-        const sekolahModel = prisma.sekolah;
-        let sekolah = null;
-        if (sekolahModel && typeof sekolahModel.findFirst === "function") {
-          sekolah = await sekolahModel.findFirst({
-            where: {
-              OR: [
-                { idSchool: id },
-                { id: id }
-              ],
-              deletedAt: null
-            }
-          }).catch(async () => {
-            return await sekolahModel.findFirst({
-              where: {
-                id: id,
-                aktif: true
-              }
-            }).catch(() => null);
-          });
-        }
+        const sekolah = await prisma.sekolah.findFirst({ where: { id } });
 
         if (!sekolah) {
           throw AppError.notFound("Akun sekolah tidak ditemukan atau telah dihapus.");
         }
-
-        const isAktif = sekolah.aktif !== undefined
-          ? sekolah.aktif
-          : (sekolah.statusAktif !== undefined ? sekolah.statusAktif : (sekolah.deletedAt === null));
-
-        if (!isAktif) {
-          throw new AppError("Akun sekolah dinonaktifkan. Silakan hubungi Super Admin.", 403);
+        if (!sekolah.aktif) {
+          throw AppError.forbidden(PESAN_SEKOLAH_NONAKTIF);
         }
-
-        const schoolId = sekolah.id ?? sekolah.idSchool;
-        const schoolName = sekolah.nama || sekolah.schoolName;
-        const schoolPhone = sekolah.kontak_telepon || sekolah.kontakTelepon;
 
         return ApiResponse.success(res, {
           statusCode: 200,
@@ -319,18 +191,17 @@ export class AuthController {
           data: {
             role: "SEKOLAH",
             user: {
-              id: schoolId,
-              adminId: sekolah.adminId || null,
-              schoolName: schoolName,
-              nama: schoolName,
+              id: sekolah.id,
+              schoolName: sekolah.nama,
+              nama: sekolah.nama,
               email: sekolah.email,
               alamat: sekolah.alamat,
-              kontakTelepon: schoolPhone,
-              kontak_telepon: schoolPhone,
-              statusAktif: isAktif,
-              aktif: isAktif,
-              createdAt: sekolah.created_at || sekolah.createdAt,
-              updatedAt: sekolah.updated_at || sekolah.updatedAt
+              kontakTelepon: sekolah.kontak_telepon,
+              kontak_telepon: sekolah.kontak_telepon,
+              statusAktif: sekolah.aktif,
+              aktif: sekolah.aktif,
+              createdAt: sekolah.created_at,
+              updatedAt: sekolah.updated_at
             }
           }
         });

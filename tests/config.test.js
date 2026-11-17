@@ -2,7 +2,14 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadConfig } from "../src/config/loadConfig.js";
 
-const base = { DB_USER: "capstone_user", DB_PASSWORD: "rahasia", DB_NAME: "capstone_skrining" };
+const base = { DB_USER: "capstone_user", DB_PASSWORD: "rahasia", DB_NAME: "capstone_skrining", JWT_SECRET: "rahasia-jwt" };
+
+test("loadConfig menolak JWT_SECRET yang kosong atau hilang", () => {
+  const { JWT_SECRET, ...tanpaSecret } = base;
+  assert.throws(() => loadConfig(tanpaSecret), /JWT_SECRET/);
+  assert.throws(() => loadConfig({ ...base, JWT_SECRET: "  " }), /JWT_SECRET/);
+  assert.equal(loadConfig(base).jwt.secret, "rahasia-jwt");
+});
 
 test("loadConfig memakai nilai default", () => {
   const c = loadConfig(base);

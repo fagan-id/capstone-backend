@@ -320,7 +320,7 @@ export async function tambahTesSkrining(db, data, superAdminId = 1) {
 
   // 3. Pastikan super_admin_id valid
   let adminId = superAdminId;
-  const adminModel = db.super_admin || db.superAdmin;
+  const adminModel = db.super_admin;
   if (adminModel && typeof adminModel.findUnique === "function") {
     try {
       const admin = await adminModel.findUnique({ where: { id: superAdminId } });

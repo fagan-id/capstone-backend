@@ -53,13 +53,13 @@ test("AuthController.login sukses sebagai Super Admin via email", async () => {
   const plainPassword = "Password123!";
   const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
-  const originalAdminFindFirst = prisma.superAdmin.findFirst;
-  prisma.superAdmin.findFirst = async () => ({
-    idAdmin: 1,
-    username: "superadmin",
+  const originalAdminFindFirst = prisma.super_admin.findFirst;
+  prisma.super_admin.findFirst = async () => ({
+    id: 1,
+    nama: "superadmin",
     email: "admin@skriningabk.id",
-    password: hashedPassword,
-    deletedAt: null
+    password_hash: hashedPassword,
+    aktif: true
   });
 
   try {
@@ -89,7 +89,7 @@ test("AuthController.login sukses sebagai Super Admin via email", async () => {
     assert.equal(decoded.role, "SUPER_ADMIN");
     assert.equal(decoded.email, "admin@skriningabk.id");
   } finally {
-    prisma.superAdmin.findFirst = originalAdminFindFirst;
+    prisma.super_admin.findFirst = originalAdminFindFirst;
   }
 });
 
@@ -97,13 +97,13 @@ test("AuthController.login sukses sebagai Super Admin via username", async () =>
   const plainPassword = "Password123!";
   const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
-  const originalAdminFindFirst = prisma.superAdmin.findFirst;
-  prisma.superAdmin.findFirst = async () => ({
-    idAdmin: 1,
-    username: "superadmin",
+  const originalAdminFindFirst = prisma.super_admin.findFirst;
+  prisma.super_admin.findFirst = async () => ({
+    id: 1,
+    nama: "superadmin",
     email: "admin@skriningabk.id",
-    password: hashedPassword,
-    deletedAt: null
+    password_hash: hashedPassword,
+    aktif: true
   });
 
   try {
@@ -122,7 +122,7 @@ test("AuthController.login sukses sebagai Super Admin via username", async () =>
     assert.equal(res.statusCode, 200);
     assert.equal(res.jsonData.data.role, "SUPER_ADMIN");
   } finally {
-    prisma.superAdmin.findFirst = originalAdminFindFirst;
+    prisma.super_admin.findFirst = originalAdminFindFirst;
   }
 });
 
@@ -130,20 +130,18 @@ test("AuthController.login sukses sebagai Sekolah", async () => {
   const plainPassword = "Password123!";
   const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
-  const originalAdminFindFirst = prisma.superAdmin.findFirst;
+  const originalAdminFindFirst = prisma.super_admin.findFirst;
   const originalSekolahFindFirst = prisma.sekolah.findFirst;
 
-  prisma.superAdmin.findFirst = async () => null;
+  prisma.super_admin.findFirst = async () => null;
   prisma.sekolah.findFirst = async () => ({
-    idSchool: 10,
-    adminId: 1,
-    schoolName: "SDN Sukamaju 01",
+    id: 10,
+    nama: "SDN Sukamaju 01",
     email: "sdnsukamaju01@sch.id",
-    password: hashedPassword,
+    password_hash: hashedPassword,
     alamat: "Jl. Pendidikan No. 1",
-    kontakTelepon: "081234567890",
-    statusAktif: true,
-    deletedAt: null
+    kontak_telepon: "081234567890",
+    aktif: true
   });
 
   try {
@@ -170,16 +168,16 @@ test("AuthController.login sukses sebagai Sekolah", async () => {
     assert.equal(decoded.id, 10);
     assert.equal(decoded.role, "SEKOLAH");
   } finally {
-    prisma.superAdmin.findFirst = originalAdminFindFirst;
+    prisma.super_admin.findFirst = originalAdminFindFirst;
     prisma.sekolah.findFirst = originalSekolahFindFirst;
   }
 });
 
 test("AuthController.login menolak akun yang tidak ditemukan di kedua tabel", async () => {
-  const originalAdminFindFirst = prisma.superAdmin.findFirst;
+  const originalAdminFindFirst = prisma.super_admin.findFirst;
   const originalSekolahFindFirst = prisma.sekolah.findFirst;
 
-  prisma.superAdmin.findFirst = async () => null;
+  prisma.super_admin.findFirst = async () => null;
   prisma.sekolah.findFirst = async () => null;
 
   try {
@@ -200,7 +198,7 @@ test("AuthController.login menolak akun yang tidak ditemukan di kedua tabel", as
     assert.equal(errorCaught.statusCode, 401);
     assert.match(errorCaught.message, /Kredensial tidak valid/);
   } finally {
-    prisma.superAdmin.findFirst = originalAdminFindFirst;
+    prisma.super_admin.findFirst = originalAdminFindFirst;
     prisma.sekolah.findFirst = originalSekolahFindFirst;
   }
 });
@@ -208,13 +206,13 @@ test("AuthController.login menolak akun yang tidak ditemukan di kedua tabel", as
 test("AuthController.login menolak password yang salah pada Super Admin", async () => {
   const hashedPassword = await bcrypt.hash("PasswordBenar!", 10);
 
-  const originalAdminFindFirst = prisma.superAdmin.findFirst;
-  prisma.superAdmin.findFirst = async () => ({
-    idAdmin: 1,
-    username: "superadmin",
+  const originalAdminFindFirst = prisma.super_admin.findFirst;
+  prisma.super_admin.findFirst = async () => ({
+    id: 1,
+    nama: "superadmin",
     email: "admin@skriningabk.id",
-    password: hashedPassword,
-    deletedAt: null
+    password_hash: hashedPassword,
+    aktif: true
   });
 
   try {
@@ -235,7 +233,7 @@ test("AuthController.login menolak password yang salah pada Super Admin", async 
     assert.equal(errorCaught.statusCode, 401);
     assert.match(errorCaught.message, /Kredensial tidak valid/);
   } finally {
-    prisma.superAdmin.findFirst = originalAdminFindFirst;
+    prisma.super_admin.findFirst = originalAdminFindFirst;
   }
 });
 
@@ -243,18 +241,16 @@ test("AuthController.login menolak akun sekolah yang berstatus nonaktif (403)", 
   const plainPassword = "Password123!";
   const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
-  const originalAdminFindFirst = prisma.superAdmin.findFirst;
+  const originalAdminFindFirst = prisma.super_admin.findFirst;
   const originalSekolahFindFirst = prisma.sekolah.findFirst;
 
-  prisma.superAdmin.findFirst = async () => null;
+  prisma.super_admin.findFirst = async () => null;
   prisma.sekolah.findFirst = async () => ({
-    idSchool: 11,
-    adminId: 1,
-    schoolName: "SDN Nonaktif 02",
+    id: 11,
+    nama: "SDN Nonaktif 02",
     email: "sdnnonaktif@sch.id",
-    password: hashedPassword,
-    statusAktif: false,
-    deletedAt: null
+    password_hash: hashedPassword,
+    aktif: false
   });
 
   try {
@@ -275,7 +271,7 @@ test("AuthController.login menolak akun sekolah yang berstatus nonaktif (403)", 
     assert.equal(errorCaught.statusCode, 403);
     assert.match(errorCaught.message, /Akun sekolah dinonaktifkan/);
   } finally {
-    prisma.superAdmin.findFirst = originalAdminFindFirst;
+    prisma.super_admin.findFirst = originalAdminFindFirst;
     prisma.sekolah.findFirst = originalSekolahFindFirst;
   }
 });
@@ -358,13 +354,13 @@ test("auth.middleware authorizeRoles membatasi hak akses", () => {
 });
 
 test("AuthController.me mengambil data Super Admin yang sedang login", async () => {
-  const originalAdminFindFirst = prisma.superAdmin.findFirst;
-  prisma.superAdmin.findFirst = async () => ({
-    idAdmin: 1,
-    username: "superadmin",
+  const originalAdminFindFirst = prisma.super_admin.findFirst;
+  prisma.super_admin.findFirst = async () => ({
+    id: 1,
+    nama: "superadmin",
     email: "admin@skriningabk.id",
-    createdAt: new Date(),
-    updatedAt: new Date()
+    created_at: new Date(),
+    updated_at: new Date()
   });
 
   try {
@@ -382,22 +378,21 @@ test("AuthController.me mengambil data Super Admin yang sedang login", async () 
     assert.equal(res.jsonData.data.role, "SUPER_ADMIN");
     assert.equal(res.jsonData.data.user.username, "superadmin");
   } finally {
-    prisma.superAdmin.findFirst = originalAdminFindFirst;
+    prisma.super_admin.findFirst = originalAdminFindFirst;
   }
 });
 
 test("AuthController.me mengambil data Sekolah yang sedang login", async () => {
   const originalSekolahFindFirst = prisma.sekolah.findFirst;
   prisma.sekolah.findFirst = async () => ({
-    idSchool: 10,
-    adminId: 1,
-    schoolName: "SDN Sukamaju 01",
+    id: 10,
+    nama: "SDN Sukamaju 01",
     email: "sdnsukamaju01@sch.id",
     alamat: "Jl. Pendidikan No. 1",
-    kontakTelepon: "081234567890",
-    statusAktif: true,
-    createdAt: new Date(),
-    updatedAt: new Date()
+    kontak_telepon: "081234567890",
+    aktif: true,
+    created_at: new Date(),
+    updated_at: new Date()
   });
 
   try {
@@ -417,4 +412,104 @@ test("AuthController.me mengambil data Sekolah yang sedang login", async () => {
   } finally {
     prisma.sekolah.findFirst = originalSekolahFindFirst;
   }
+});
+
+// Meniru Prisma: kolom di luar skema ditolak, dan filter aktif: true menyaring baris nonaktif.
+const KOLOM = {
+  super_admin: ["id", "nama", "email", "password_hash", "aktif"],
+  sekolah: ["id", "nama", "email", "username", "password_hash", "aktif"]
+};
+
+function sepertiPrisma(tabel, baris) {
+  const cek = (where) => {
+    for (const [k, v] of Object.entries(where)) {
+      if (k === "OR") v.forEach(cek);
+      else if (!KOLOM[tabel].includes(k)) throw new Error(`Unknown argument \`${k}\``);
+    }
+  };
+  return async ({ where }) => {
+    cek(where);
+    if (!baris || (where.aktif === true && !baris.aktif)) return null;
+    return baris;
+  };
+}
+
+async function denganMock(adminFn, sekolahFn, fn) {
+  const asliAdmin = prisma.super_admin.findFirst;
+  const asliSekolah = prisma.sekolah.findFirst;
+  prisma.super_admin.findFirst = adminFn;
+  prisma.sekolah.findFirst = sekolahFn;
+  try {
+    await fn();
+  } finally {
+    prisma.super_admin.findFirst = asliAdmin;
+    prisma.sekolah.findFirst = asliSekolah;
+  }
+}
+
+async function panggil(handler, req) {
+  let galat = null;
+  const res = createMockRes();
+  await handler(req, res, (err) => { galat = err; });
+  return { res, galat };
+}
+
+test("AuthController.login menolak Super Admin nonaktif dengan 403, bukan 401", async () => {
+  const hash = await bcrypt.hash("Password123!", 10);
+  await denganMock(
+    sepertiPrisma("super_admin", { id: 1, nama: "Admin", email: "a@x.test", password_hash: hash, aktif: false }),
+    sepertiPrisma("sekolah", null),
+    async () => {
+      const { galat } = await panggil(AuthController.login, { body: { identifier: "a@x.test", password: "Password123!" } });
+      assert.equal(galat?.statusCode, 403);
+    }
+  );
+});
+
+test("AuthController.login menolak Sekolah nonaktif dengan 403 memakai kolom skema asli", async () => {
+  const hash = await bcrypt.hash("Password123!", 10);
+  await denganMock(
+    sepertiPrisma("super_admin", null),
+    sepertiPrisma("sekolah", { id: 2, nama: "SD X", email: "s@x.test", username: "sd_x", password_hash: hash, aktif: false }),
+    async () => {
+      const { galat } = await panggil(AuthController.login, { body: { identifier: "sd_x", password: "Password123!" } });
+      assert.equal(galat?.statusCode, 403);
+      assert.match(galat.message, /Akun sekolah dinonaktifkan/);
+    }
+  );
+});
+
+test("AuthController.login meneruskan galat database, bukan menyamarkannya jadi 401", async () => {
+  const putus = new Error("koneksi database putus");
+  await denganMock(
+    async () => { throw putus; },
+    async () => { throw putus; },
+    async () => {
+      const { galat } = await panggil(AuthController.login, { body: { identifier: "a@x.test", password: "Password123!" } });
+      assert.equal(galat, putus);
+    }
+  );
+});
+
+test("AuthController.me menolak Sekolah yang sudah dinonaktifkan dengan 403", async () => {
+  await denganMock(
+    sepertiPrisma("super_admin", null),
+    sepertiPrisma("sekolah", { id: 2, nama: "SD X", email: "s@x.test", username: "sd_x", aktif: false }),
+    async () => {
+      const { galat } = await panggil(AuthController.me, { user: { id: 2, role: "SEKOLAH" } });
+      assert.equal(galat?.statusCode, 403);
+    }
+  );
+});
+
+test("AuthController.me meneruskan galat database pada Super Admin", async () => {
+  const putus = new Error("koneksi database putus");
+  await denganMock(
+    async () => { throw putus; },
+    sepertiPrisma("sekolah", null),
+    async () => {
+      const { galat } = await panggil(AuthController.me, { user: { id: 1, role: "SUPER_ADMIN" } });
+      assert.equal(galat, putus);
+    }
+  );
 });

@@ -3,7 +3,7 @@
  * Fungsi murni: menerima objek env, mengembalikan objek konfigurasi siap pakai.
  */
 
-const WAJIB = ["DB_USER", "DB_PASSWORD", "DB_NAME"];
+const WAJIB = ["DB_USER", "DB_PASSWORD", "DB_NAME", "JWT_SECRET"];
 
 /**
  * Mengambil nilai env; string kosong (atau hanya spasi) dianggap tidak diisi.
@@ -77,7 +77,7 @@ export function loadConfig(env) {
     `@${db.host}:${db.port}/${db.name}`;
 
   const jwt = {
-    secret: ambil(env, "JWT_SECRET") ?? "capstone_abk_super_secret_jwt_key_2026",
+    secret: ambil(env, "JWT_SECRET"),
     expiresIn: ambil(env, "JWT_EXPIRES_IN") ?? "1d"
   };
 
