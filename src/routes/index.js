@@ -11,7 +11,6 @@ import skriningOrangTuaRoutes from "./public/skriningOrangTua.js";
 import superAdminKelolaSekolahRoutes from "./superAdmin/superAdminKelolaSekolah.js";
 import superAdminTesSkriningRoutes from "./superAdmin/superAdminTesSkrining.js";
 import superAdminDashboardRoutes from "./superAdmin/superAdminDashboard.js";
-import { logoutSuperAdmin } from "../controllers/superAdmin/superAdminDashboard.js";
 
 /**
  * Membuat router API.
@@ -35,9 +34,6 @@ export function createRouter({ config, cekDatabase }) {
 
   // Rute Super Admin - Dashboard
   router.use("/super-admin/dashboard", superAdminDashboardRoutes);
-
-  // Rute Logout Super Admin (Hanya gunakan prefix eksplisit /super-admin/logout)
-  router.post("/super-admin/logout", logoutSuperAdmin);
 
   router.get("/health", async (req, res) => {
     const timestamp = new Date().toISOString();

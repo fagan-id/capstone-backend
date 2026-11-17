@@ -277,9 +277,9 @@ async function main() {
       return `Sesi valid: "${body.data.nama}", Sekolah: "${body.data.sekolah.nama}"`;
     });
 
-    // G. LOGOUT ENDPOINTS
-    await runStep("20. Logout Super Admin (POST /api/super-admin/logout)", async () => {
-      const res = await fetch(`${baseUrl}/api/super-admin/logout`, {
+    // G. LOGOUT TERPUSAT (AUTH)
+    await runStep("20. Logout Super Admin via Auth Terpusat (POST /api/auth/logout)", async () => {
+      const res = await fetch(`${baseUrl}/api/auth/logout`, {
         method: "POST",
         headers: { Authorization: `Bearer ${superAdminToken}` }
       });
@@ -288,7 +288,7 @@ async function main() {
       return body.message;
     });
 
-    await runStep("21. Logout Umum Auth (POST /api/auth/logout)", async () => {
+    await runStep("21. Logout Sekolah via Auth Terpusat (POST /api/auth/logout)", async () => {
       const res = await fetch(`${baseUrl}/api/auth/logout`, {
         method: "POST",
         headers: { Authorization: `Bearer ${sekolahToken}` }

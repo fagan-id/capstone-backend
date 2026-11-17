@@ -185,7 +185,7 @@
           "response": []
         },
         {
-          "name": "Logout Auth Umum",
+          "name": "Logout (Sesi Semua Role)",
           "request": {
             "method": "POST",
             "header": [],
@@ -194,7 +194,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "auth", "logout"]
             },
-            "description": "Mengakhiri sesi autentikasi dan menghapus cookie token."
+            "description": "Mengakhiri sesi autentikasi dan menghapus cookie token untuk semua role (Super Admin & Sekolah)."
           },
           "response": []
         }
@@ -233,44 +233,6 @@
               ]
             },
             "description": "Mengambil 4 kartu statistik KPI (Total Sekolah, Sekolah Aktif, Sesi Aktif, Total Siswa) dan feed aktivitas terbaru platform."
-          },
-          "response": []
-        },
-        {
-          "name": "Ambil Data Dashboard (Alias /admin/dashboard)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{superAdminToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/admin/dashboard",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "admin", "dashboard"]
-            },
-            "description": "Rute alias untuk Dashboard Super Admin."
-          },
-          "response": []
-        },
-        {
-          "name": "Logout Super Admin",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{superAdminToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/super-admin/logout",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "super-admin", "logout"]
-            },
-            "description": "Mengakhiri sesi Super Admin secara spesifik dan membersihkan cookie."
           },
           "response": []
         }
