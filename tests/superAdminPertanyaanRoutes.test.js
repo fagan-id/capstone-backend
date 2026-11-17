@@ -444,30 +444,14 @@ test("9. DELETE /api/super-admin/tes-skrining/:id/pertanyaan/:pertanyaanId berha
   }
 });
 
-// 10. Alias endpoint /api/admin/tes-skrining/:id/pertanyaan bekerja identik
-test("10. Alias endpoint /api/admin/tes-skrining/:id/pertanyaan dapat diakses oleh Super Admin", async () => {
+// 10. Rute /api/admin/tes-skrining/:id/pertanyaan mengembalikan 404 karena rute Super Admin eksklusif di /super-admin/tes-skrining
+test("10. Rute /api/admin/tes-skrining/:id/pertanyaan mengembalikan 404 karena rute dialihkan eksklusif ke /super-admin", async () => {
   const tokenAdmin = buatTestToken("SUPER_ADMIN", 1);
 
-  const origTesFindUnique = prisma.tes_skrining.findUnique;
-  const origPertanyaanCount = prisma.pertanyaan.count;
-  const origPertanyaanFindMany = prisma.pertanyaan.findMany;
-
-  prisma.tes_skrining.findUnique = async () => ({ id: 1, nama: "Tes L1", level: 1, kategori_asesmen: [] });
-  prisma.pertanyaan.count = async () => 0;
-  prisma.pertanyaan.findMany = async () => [];
-
-  try {
-    await denganServer(async (baseUrl) => {
-      const res = await fetch(`${baseUrl}/api/admin/tes-skrining/1/pertanyaan`, {
-        headers: { Authorization: `Bearer ${tokenAdmin}` }
-      });
-      assert.equal(res.status, 200);
-      const body = await res.json();
-      assert.equal(body.success, true);
+  await denganServer(async (baseUrl) => {
+    const res = await fetch(`${baseUrl}/api/admin/tes-skrining/1/pertanyaan`, {
+      headers: { Authorization: `Bearer ${tokenAdmin}` }
     });
-  } finally {
-    prisma.tes_skrining.findUnique = origTesFindUnique;
-    prisma.pertanyaan.count = origPertanyaanCount;
-    prisma.pertanyaan.findMany = origPertanyaanFindMany;
-  }
+    assert.equal(res.status, 404);
+  });
 });

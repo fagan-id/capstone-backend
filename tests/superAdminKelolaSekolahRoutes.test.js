@@ -339,26 +339,13 @@ test("DELETE /api/super-admin/sekolah/:id ditolak dengan 405 Method Not Allowed 
   });
 });
 
-test("Alias rute /api/admin/sekolah juga dapat diakses dengan hasil yang sama", async () => {
+test("Rute /api/admin/sekolah mengembalikan 404 karena rute Super Admin eksklusif di /super-admin/sekolah", async () => {
   const tokenAdmin = buatTestToken("SUPER_ADMIN", 1);
 
-  const originalCount = prisma.sekolah.count;
-  const originalFindMany = prisma.sekolah.findMany;
-
-  prisma.sekolah.count = async () => 0;
-  prisma.sekolah.findMany = async () => [];
-
-  try {
-    await denganServer(async (baseUrl) => {
-      const res = await fetch(`${baseUrl}/api/admin/sekolah`, {
-        headers: { Authorization: `Bearer ${tokenAdmin}` }
-      });
-      assert.equal(res.status, 200);
-      const body = await res.json();
-      assert.equal(body.success, true);
+  await denganServer(async (baseUrl) => {
+    const res = await fetch(`${baseUrl}/api/admin/sekolah`, {
+      headers: { Authorization: `Bearer ${tokenAdmin}` }
     });
-  } finally {
-    prisma.sekolah.count = originalCount;
-    prisma.sekolah.findMany = originalFindMany;
-  }
+    assert.equal(res.status, 404);
+  });
 });

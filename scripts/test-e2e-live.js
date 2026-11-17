@@ -102,14 +102,12 @@ async function main() {
       return `Total Sekolah: ${totalSekolah}, Sesi Aktif: ${sesiAktif}, 4 KPI Cards OK`;
     });
 
-    await runStep("5. Alias Dashboard Super Admin (GET /api/admin/dashboard)", async () => {
+    await runStep("5. Penolakan Rute /api/admin/dashboard (Harus 404 karena rute eksklusif /super-admin)", async () => {
       const res = await fetch(`${baseUrl}/api/admin/dashboard`, {
         headers: { Authorization: `Bearer ${superAdminToken}` }
       });
-      if (res.status !== 200) throw new Error(`Status ${res.status}`);
-      const body = await res.json();
-      if (!body.success) throw new Error("Alias dashboard gagal");
-      return "Endpoint alias /admin/dashboard berhasil";
+      if (res.status !== 404) throw new Error(`Status ${res.status}, harus 404 Not Found`);
+      return "Endpoint /admin/dashboard terproteksi 404 (rute eksklusif /super-admin/*)";
     });
 
     // D. KELOLA SEKOLAH

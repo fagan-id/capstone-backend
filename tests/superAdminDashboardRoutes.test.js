@@ -181,26 +181,17 @@ test("3. GET /api/super-admin/dashboard sukses mengembalikan statistik dan aktiv
   }
 });
 
-// 4. Dashboard: Rute alias /api/admin/dashboard sukses
-test("4. GET /api/admin/dashboard (alias) sukses mengembalikan data dashboard", async () => {
+// 4. Dashboard: Rute /api/admin/dashboard tidak terdaftar (404) karena rute Super Admin eksklusif di /super-admin/dashboard
+test("4. GET /api/admin/dashboard mengembalikan 404 karena rute dialihkan eksklusif ke /super-admin/dashboard", async () => {
   const tokenAdmin = buatTestToken("SUPER_ADMIN", 1, "admin@skriningabk.id");
-  const restoreMock = pasangMockPrismaDashboard();
 
-  try {
-    await denganServer(async (baseUrl) => {
-      const res = await fetch(`${baseUrl}/api/admin/dashboard`, {
-        headers: { Authorization: `Bearer ${tokenAdmin}` }
-      });
-
-      assert.equal(res.status, 200);
-      const body = await res.json();
-      assert.equal(body.success, true);
-      assert.ok(body.data.statistik);
-      assert.equal(body.data.statistik.total_sekolah, 24);
+  await denganServer(async (baseUrl) => {
+    const res = await fetch(`${baseUrl}/api/admin/dashboard`, {
+      headers: { Authorization: `Bearer ${tokenAdmin}` }
     });
-  } finally {
-    restoreMock();
-  }
+
+    assert.equal(res.status, 404);
+  });
 });
 
 // 5. Dashboard: Paginasi kustom (page=2, limit=2)

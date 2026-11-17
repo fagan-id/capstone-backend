@@ -29,15 +29,12 @@ export function createRouter({ config, cekDatabase }) {
 
   // Rute Super Admin - Kelola Sekolah (CRU tanpa Delete)
   router.use("/super-admin/sekolah", superAdminKelolaSekolahRoutes);
-  router.use("/admin/sekolah", superAdminKelolaSekolahRoutes);
 
   // Rute Super Admin - Manajemen Tes Skrining (CRUD)
   router.use("/super-admin/tes-skrining", superAdminTesSkriningRoutes);
-  router.use("/admin/tes-skrining", superAdminTesSkriningRoutes);
 
   // Rute Super Admin - Dashboard
   router.use("/super-admin/dashboard", superAdminDashboardRoutes);
-  router.use("/admin/dashboard", superAdminDashboardRoutes);
 
   // Rute Logout Super Admin (Hanya gunakan prefix eksplisit /super-admin/logout)
   router.post("/super-admin/logout", logoutSuperAdmin);

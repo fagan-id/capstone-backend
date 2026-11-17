@@ -486,26 +486,14 @@ test("14. DELETE /api/super-admin/tes-skrining/:id/penilaian/:aturanId menghapus
   }
 });
 
-// 15. Alias /api/admin/tes-skrining/:id/penilaian bekerja identik (200)
-test("15. Alias /api/admin/tes-skrining/:id/penilaian berfungsi identik", async () => {
+// 15. Rute /api/admin/tes-skrining/:id/penilaian mengembalikan 404 karena rute Super Admin eksklusif di /super-admin
+test("15. Rute /api/admin/tes-skrining/:id/penilaian mengembalikan 404 karena rute dialihkan eksklusif ke /super-admin", async () => {
   const tokenAdmin = buatTestToken("SUPER_ADMIN", 1);
-  const origTesFindUnique = prisma.tes_skrining.findUnique;
-  const origPertanyaanFindMany = prisma.pertanyaan.findMany;
 
-  prisma.tes_skrining.findUnique = async () => ({ id: 1, level: 1, nama: "DSM-5 Level 1" });
-  prisma.pertanyaan.findMany = async () => [];
-
-  try {
-    await denganServer(async (baseUrl) => {
-      const res = await fetch(`${baseUrl}/api/admin/tes-skrining/1/penilaian`, {
-        headers: { Authorization: `Bearer ${tokenAdmin}` }
-      });
-      assert.equal(res.status, 200);
-      const body = await res.json();
-      assert.equal(body.success, true);
+  await denganServer(async (baseUrl) => {
+    const res = await fetch(`${baseUrl}/api/admin/tes-skrining/1/penilaian`, {
+      headers: { Authorization: `Bearer ${tokenAdmin}` }
     });
-  } finally {
-    prisma.tes_skrining.findUnique = origTesFindUnique;
-    prisma.pertanyaan.findMany = origPertanyaanFindMany;
-  }
+    assert.equal(res.status, 404);
+  });
 });
