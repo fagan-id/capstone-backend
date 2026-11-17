@@ -99,15 +99,17 @@ model siswa {
 
 /// Domain DSM-5 pada skrining awal. Ambang batasnya dipakai per butir, bukan per jumlah (D43).
 model kategori_asesmen {
-  id              Int      @id @default(autoincrement())
-  nama            String   @db.VarChar(100)
-  ambang_batas    Int      @db.UnsignedTinyInt
-  tes_skrining_id Int?
-  deskripsi       String?  @db.Text
-  rekomendasi     String?  @db.Text
-  urutan          Int      @db.UnsignedTinyInt
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
+  id                         Int      @id @default(autoincrement())
+  nama                       String   @db.VarChar(100)
+  ambang_batas               Int      @db.UnsignedTinyInt
+  tes_skrining_id            Int?
+  deskripsi                  String?  @db.Text
+  rekomendasi                String?  @db.Text
+  deskripsi_belum_memenuhi   String?  @db.Text
+  rekomendasi_belum_memenuhi String?  @db.Text
+  urutan                     Int      @db.UnsignedTinyInt
+  created_at                 DateTime @default(now())
+  updated_at                 DateTime @updatedAt
 
   // Instrumen Level 2 untuk domain ini. Kosong berarti domain hanya ditandai untuk sekolah (D34).
   tes_skrining   tes_skrining?    @relation(fields: [tes_skrining_id], references: [id], onDelete: Restrict)
@@ -133,6 +135,7 @@ model tes_skrining {
   pertanyaan       pertanyaan[]
   kategori_asesmen kategori_asesmen[]
   hasil_tes        hasil_tes[]
+  rentang_penilaian rentang_penilaian[]
 
   @@index([super_admin_id])
   @@index([level, aktif])
@@ -159,20 +162,30 @@ model pertanyaan {
   tes_skrining_id     Int
   kategori_asesmen_id Int
   teks                String       @db.Text
+  kalimat_pengantar   String?      @db.Text
   tipe_jawaban        tipe_jawaban
   nomor_urut          Int          @db.UnsignedSmallInt
   url_gambar          String?      @db.VarChar(255)
   aktif               Boolean      @default(true)
+  pemicu_pertanyaan_id Int?
+  pemicu_opsi_id      Int?
+  pemicu_operator     String?      @db.VarChar(10)
+  pemicu_nilai        Int?         @db.UnsignedTinyInt
   created_at          DateTime     @default(now())
   updated_at          DateTime     @updatedAt
 
-  tes_skrining     tes_skrining     @relation(fields: [tes_skrining_id], references: [id], onDelete: Restrict)
-  kategori_asesmen kategori_asesmen @relation(fields: [kategori_asesmen_id], references: [id], onDelete: Restrict)
-  opsi_jawaban     opsi_jawaban[]
-  jawaban_siswa    jawaban_siswa[]
+  tes_skrining       tes_skrining     @relation(fields: [tes_skrining_id], references: [id], onDelete: Restrict)
+  kategori_asesmen   kategori_asesmen @relation(fields: [kategori_asesmen_id], references: [id], onDelete: Restrict)
+  opsi_jawaban       opsi_jawaban[]
+  jawaban_siswa      jawaban_siswa[]
+  pemicu_pertanyaan  pertanyaan?      @relation("PemicuPertanyaan", fields: [pemicu_pertanyaan_id], references: [id], onDelete: Restrict)
+  pertanyaan_terpicu pertanyaan[]     @relation("PemicuPertanyaan")
+  pemicu_opsi        opsi_jawaban?    @relation("PemicuOpsi", fields: [pemicu_opsi_id], references: [id], onDelete: Restrict)
 
   @@unique([tes_skrining_id, nomor_urut])
   @@index([kategori_asesmen_id])
+  @@index([pemicu_pertanyaan_id])
+  @@index([pemicu_opsi_id])
 }
 
 model opsi_jawaban {
@@ -180,14 +193,16 @@ model opsi_jawaban {
   pertanyaan_id Int
   label         String   @db.VarChar(10)
   teks          String   @db.VarChar(255)
+  penjelasan    String?  @db.VarChar(255)
   skor          Int      @db.UnsignedTinyInt
   urutan        Int      @db.UnsignedTinyInt
   url_gambar    String?  @db.VarChar(255)
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
 
-  pertanyaan    pertanyaan      @relation(fields: [pertanyaan_id], references: [id], onDelete: Restrict)
-  jawaban_siswa jawaban_siswa[]
+  pertanyaan         pertanyaan      @relation(fields: [pertanyaan_id], references: [id], onDelete: Restrict)
+  jawaban_siswa      jawaban_siswa[]
+  pertanyaan_terpicu pertanyaan[]    @relation("PemicuOpsi")
 
   @@unique([pertanyaan_id, urutan])
 }
@@ -244,6 +259,8 @@ model hasil_kategori {
   skor_tertinggi      Int      @db.UnsignedTinyInt
   ambang_batas        Int      @db.UnsignedTinyInt
   terindikasi         Boolean
+  deskripsi           String?  @db.Text
+  rekomendasi         String?  @db.Text
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt
 
@@ -260,6 +277,9 @@ model hasil_tes {
   hasil_skrining_id Int
   tes_skrining_id   Int
   total_skor        Int?      @db.UnsignedSmallInt
+  kategori_hasil    String?   @db.VarChar(100)
+  deskripsi_hasil   String?   @db.Text
+  rekomendasi_hasil String?   @db.Text
   selesai           Boolean   @default(false)
   waktu_selesai     DateTime?
   created_at        DateTime  @default(now())
@@ -269,5 +289,23 @@ model hasil_tes {
   tes_skrining   tes_skrining   @relation(fields: [tes_skrining_id], references: [id], onDelete: Restrict)
 
   @@unique([hasil_skrining_id, tes_skrining_id])
+  @@index([tes_skrining_id])
+}
+
+/// Rentang penilaian dan kategori tingkat keparahan untuk instrumen Level 2.
+model rentang_penilaian {
+  id              Int          @id @default(autoincrement())
+  tes_skrining_id Int
+  kategori        String       @db.VarChar(100)
+  skor_min        Float
+  skor_max        Float?
+  urutan          Int          @db.UnsignedTinyInt
+  deskripsi       String?      @db.Text
+  rekomendasi     String?      @db.Text
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @updatedAt
+
+  tes_skrining tes_skrining @relation(fields: [tes_skrining_id], references: [id], onDelete: Cascade)
+
   @@index([tes_skrining_id])
 }
