@@ -1,0 +1,1155 @@
+{
+  "info": {
+    "_postman_id": "c1f7b8a9-4d2e-4b3f-8a1d-7e8c9b0a1f2e",
+    "name": "Capstone Backend - Sistem Skrining ABK API",
+    "description": "Postman Collection resmi untuk pengujian manual seluruh endpoint REST API Capstone Backend (Sistem Skrining Awal Anak Berkebutuhan Khusus). Mendukung role Super Admin, Sekolah, dan Alur Publik Orang Tua.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "superAdminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sekolahToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sekolahId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "tesId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "pertanyaanId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "interpretasiId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "sesiKode",
+      "value": "ABC123",
+      "type": "string"
+    },
+    {
+      "key": "siswaId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "tokenSkrining",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tesLanjutanId",
+      "value": "2",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "00. Health Check",
+      "item": [
+        {
+          "name": "Cek Kesehatan Server & Database",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "health"]
+            },
+            "description": "Memeriksa status hidup server Express dan koneksi ke database MySQL."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "01. Autentikasi (Auth)",
+      "item": [
+        {
+          "name": "Login Super Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var json = pm.response.json();",
+                  "    if (json.data && json.data.token) {",
+                  "        pm.collectionVariables.set('superAdminToken', json.data.token);",
+                  "        console.log('superAdminToken otomatis disimpan:', json.data.token);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"superadmin@demo.test\",\n  \"password\": \"parhan123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Melakukan login sebagai Super Admin. Token JWT otomatis disimpan ke variabel `superAdminToken`."
+          },
+          "response": []
+        },
+        {
+          "name": "Profil Pengguna Aktif (/me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            },
+            "description": "Membaca profil pengguna yang sedang login berdasarkan Bearer token aktif."
+          },
+          "response": []
+        },
+        {
+          "name": "Login Sekolah",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var json = pm.response.json();",
+                  "    if (json.data && json.data.token) {",
+                  "        pm.collectionVariables.set('sekolahToken', json.data.token);",
+                  "        console.log('sekolahToken otomatis disimpan:', json.data.token);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"sekolah@demo.test\",\n  \"password\": \"parhan123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Melakukan login sebagai Admin Sekolah. Token JWT otomatis disimpan ke variabel `sekolahToken`."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout Auth Umum",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            },
+            "description": "Mengakhiri sesi autentikasi dan menghapus cookie token."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02. Super Admin - Dashboard",
+      "item": [
+        {
+          "name": "Ambil Data Dashboard Super Admin",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/dashboard?page=1&limit=5&kategori=semua",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "dashboard"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                },
+                {
+                  "key": "kategori",
+                  "value": "semua"
+                }
+              ]
+            },
+            "description": "Mengambil 4 kartu statistik KPI (Total Sekolah, Sekolah Aktif, Sesi Aktif, Total Siswa) dan feed aktivitas terbaru platform."
+          },
+          "response": []
+        },
+        {
+          "name": "Ambil Data Dashboard (Alias /admin/dashboard)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "dashboard"]
+            },
+            "description": "Rute alias untuk Dashboard Super Admin."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout Super Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "logout"]
+            },
+            "description": "Mengakhiri sesi Super Admin secara spesifik dan membersihkan cookie."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03. Super Admin - Kelola Sekolah",
+      "item": [
+        {
+          "name": "Daftar Sekolah",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/sekolah?page=1&limit=10&search=&status=aktif&sortBy=created_at&sortOrder=desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "sekolah"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "status",
+                  "value": "aktif"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "created_at"
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "desc"
+                }
+              ]
+            },
+            "description": "Mengambil daftar sekolah terdaftar beserta total sesi skrining dan status."
+          },
+          "response": []
+        },
+        {
+          "name": "Detail Sekolah",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/sekolah/{{sekolahId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "sekolah", "{{sekolahId}}"]
+            },
+            "description": "Mengambil detail satu sekolah berdasarkan ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Tambah Sekolah Baru",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    if (json.data && json.data.id) {",
+                  "        pm.collectionVariables.set('sekolahId', String(json.data.id));",
+                  "        console.log('sekolahId baru disimpan:', json.data.id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama\": \"SD Negeri Cempaka 03\",\n  \"email\": \"admin.cempaka03@sekolah.sch.id\",\n  \"password\": \"PasswordRahasia123!\",\n  \"aktif\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/sekolah",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "sekolah"]
+            },
+            "description": "Menambahkan sekolah baru beserta akun admin sekolah."
+          },
+          "response": []
+        },
+        {
+          "name": "Perbarui Data Sekolah (Edit)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama\": \"SD Negeri Cempaka 03 (Diperbarui)\",\n  \"aktif\": true,\n  \"password\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/sekolah/{{sekolahId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "sekolah", "{{sekolahId}}"]
+            },
+            "description": "Memperbarui nama, status, atau password sekolah. Kosongkan password jika tidak ingin mengganti."
+          },
+          "response": []
+        },
+        {
+          "name": "Uji Penolakan Hapus Sekolah (DELETE - Harap 405)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/sekolah/{{sekolahId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "sekolah", "{{sekolahId}}"]
+            },
+            "description": "Memverifikasi bahwa aksi DELETE dilarang (CRU tanpa Delete) dengan respon HTTP 405 Method Not Allowed."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04. Super Admin - Tes Skrining (Overview)",
+      "item": [
+        {
+          "name": "Daftar Tes Skrining",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/tes-skrining?page=1&limit=10&search=&level=&status=aktif&sortBy=created_at&sortOrder=desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "tes-skrining"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "level",
+                  "value": ""
+                },
+                {
+                  "key": "status",
+                  "value": "aktif"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "created_at"
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "desc"
+                }
+              ]
+            },
+            "description": "Mengambil daftar instrumen tes Level 1 dan Level 2 beserta statistik."
+          },
+          "response": []
+        },
+        {
+          "name": "Daftar Domain DSM-5 (Kategori Dropdown)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/tes-skrining/kategori",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "tes-skrining", "kategori"]
+            },
+            "description": "Mengambil daftar domain DSM-5 untuk opsi dropdown form pembuatan tes Level 2."
+          },
+          "response": []
+        },
+        {
+          "name": "Detail Tab Overview Tes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/tes-skrining/{{tesId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "tes-skrining", "{{tesId}}"]
+            },
+            "description": "Mengambil informasi Tab Overview tes, persebaran pertanyaan, dan status aktif."
+          },
+          "response": []
+        },
+        {
+          "name": "Tambah Tes Skrining Level 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama\": \"Instrumen Skrining Tahap 1 Baru\",\n  \"level\": 1,\n  \"jenjang\": \"SD\",\n  \"deskripsi\": \"Deskripsi instrumen tes tahap awal lintas domain.\",\n  \"aktif\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/tes-skrining",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "tes-skrining"]
+            },
+            "description": "Membuat tes skrining Level 1 baru."
+          },
+          "response": []
+        },
+        {
+          "name": "Tambah Tes Skrining Level 2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama\": \"Instrumen Lanjutan Kecemasan\",\n  \"level\": 2,\n  \"jenjang\": \"SD\",\n  \"deskripsi\": \"Instrumen mendalam untuk domain kecemasan.\",\n  \"kategori_asesmen_id\": 1,\n  \"aktif\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/tes-skrining",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "tes-skrining"]
+            },
+            "description": "Membuat tes skrining Level 2 yang terikat ke salah satu domain DSM-5."
+          },
+          "response": []
+        },
+        {
+          "name": "Perbarui Overview Tes",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama\": \"Skrining Awal (Revisi Judul)\",\n  \"deskripsi\": \"Pembaruan deskripsi instruksi pengerjaan instrumen.\",\n  \"aktif\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/tes-skrining/{{tesId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "tes-skrining", "{{tesId}}"]
+            },
+            "description": "Memperbarui nama, deskripsi, jenjang, atau status keaktifan tes."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "05. Super Admin - Tab Pertanyaan",
+      "item": [
+        {
+          "name": "Daftar Pertanyaan Tes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/tes-skrining/{{tesId}}/pertanyaan?page=1&limit=10&search=&tipe_jawaban=&status=",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "tes-skrining", "{{tesId}}", "pertanyaan"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "tipe_jawaban",
+                  "value": ""
+                },
+                {
+                  "key": "status",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Mengambil seluruh butir pertanyaan pada instrumen tes, opsi jawaban, skor, dan logika pemicu."
+          },
+          "response": []
+        },
+        {
+          "name": "Metadata Form Pertanyaan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/tes-skrining/{{tesId}}/pertanyaan/metadata-form",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "tes-skrining", "{{tesId}}", "pertanyaan", "metadata-form"]
+            },
+            "description": "Mengambil pilihan format jawaban, daftar domain DSM-5, dan daftar butir kandidat percabangan."
+          },
+          "response": []
+        },
+        {
+          "name": "Detail Satu Pertanyaan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/tes-skrining/{{tesId}}/pertanyaan/{{pertanyaanId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "tes-skrining", "{{tesId}}", "pertanyaan", "{{pertanyaanId}}"]
+            },
+            "description": "Mengambil detail lengkap satu butir pertanyaan."
+          },
+          "response": []
+        },
+        {
+          "name": "Tambah Pertanyaan Baru",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kategori_asesmen_id\": 1,\n  \"teks\": \"Apakah anak sering merasa cemas atau gelisah?\",\n  \"tipe_jawaban\": \"skala\",\n  \"aktif\": true,\n  \"opsi_jawaban\": [\n    { \"label\": \"0\", \"teks\": \"Tidak sama sekali\", \"skor\": 0, \"urutan\": 1 },\n    { \"label\": \"1\", \"teks\": \"Jarang\", \"skor\": 1, \"urutan\": 2 },\n    { \"label\": \"2\", \"teks\": \"Sering\", \"skor\": 2, \"urutan\": 3 },\n    { \"label\": \"3\", \"teks\": \"Sangat Sering\", \"skor\": 3, \"urutan\": 4 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/tes-skrining/{{tesId}}/pertanyaan",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "tes-skrining", "{{tesId}}", "pertanyaan"]
+            },
+            "description": "Menambahkan butir pertanyaan baru beserta opsi jawaban dan bobot nilai."
+          },
+          "response": []
+        },
+        {
+          "name": "Simpan Urutan Pertanyaan",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"urutan\": [\n    { \"id\": 1, \"nomor_urut\": 1 },\n    { \"id\": 2, \"nomor_urut\": 2 },\n    { \"id\": 3, \"nomor_urut\": 3 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/tes-skrining/{{tesId}}/pertanyaan/urutan",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "tes-skrining", "{{tesId}}", "pertanyaan", "urutan"]
+            },
+            "description": "Memperbarui urutan nomor urut pertanyaan secara batch."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "06. Super Admin - Tab Pemetaan",
+      "item": [
+        {
+          "name": "Daftar Pemetaan Domain (Level 1)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/tes-skrining/{{tesId}}/pemetaan",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "tes-skrining", "{{tesId}}", "pemetaan"]
+            },
+            "description": "Mengambil seluruh domain DSM-5 pada tes Level 1, ambang batas, dan instrumen Level 2 yang terhubung."
+          },
+          "response": []
+        },
+        {
+          "name": "Daftar Kandidat Tes Level 2",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/tes-skrining/{{tesId}}/pemetaan/kandidat-level-2",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "tes-skrining", "{{tesId}}", "pemetaan", "kandidat-level-2"]
+            },
+            "description": "Mengambil daftar tes Level 2 yang tersedia untuk dipetakan ke domain."
+          },
+          "response": []
+        },
+        {
+          "name": "Simpan Pemetaan Domain",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pemetaan\": [\n    {\n      \"kategori_id\": 2,\n      \"tes_level_2_id\": 2\n    },\n    {\n      \"kategori_id\": 3,\n      \"tes_level_2_id\": 3\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/tes-skrining/{{tesId}}/pemetaan",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "tes-skrining", "{{tesId}}", "pemetaan"]
+            },
+            "description": "Menyimpan pemetaan domain Level 1 ke instrumen Level 2 secara atomik."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "07. Super Admin - Tab Penilaian",
+      "item": [
+        {
+          "name": "Konfigurasi Penilaian Tes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/tes-skrining/{{tesId}}/penilaian",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "tes-skrining", "{{tesId}}", "penilaian"]
+            },
+            "description": "Membaca konfigurasi penilaian numerik (ambang batas) atau rentang penilaian kategorikal."
+          },
+          "response": []
+        },
+        {
+          "name": "Metadata Form Penilaian",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/tes-skrining/{{tesId}}/penilaian/metadata-form",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "tes-skrining", "{{tesId}}", "penilaian", "metadata-form"]
+            },
+            "description": "Mengambil batas skor teoritis (min_skor, max_skor) dan opsi tipe penilaian."
+          },
+          "response": []
+        },
+        {
+          "name": "Simpan Penilaian Level 1 (Ambang Batas)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipe_penilaian\": \"numerik\",\n  \"aturan_numerik\": [\n    {\n      \"kategori_id\": 1,\n      \"ambang_batas\": 2\n    },\n    {\n      \"kategori_id\": 2,\n      \"ambang_batas\": 1\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/tes-skrining/{{tesId}}/penilaian",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "tes-skrining", "{{tesId}}", "penilaian"]
+            },
+            "description": "Memperbarui ambang batas domain Level 1."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "08. Super Admin - Tab Interpretasi",
+      "item": [
+        {
+          "name": "Daftar Konfigurasi Interpretasi",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/tes-skrining/{{tesId}}/interpretasi",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "tes-skrining", "{{tesId}}", "interpretasi"]
+            },
+            "description": "Mengambil narasi deskripsi hasil dan teks rekomendasi tindakan per-domain/rentang."
+          },
+          "response": []
+        },
+        {
+          "name": "Detail Satu Interpretasi",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/tes-skrining/{{tesId}}/interpretasi/{{interpretasiId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "tes-skrining", "{{tesId}}", "interpretasi", "{{interpretasiId}}"]
+            },
+            "description": "Mengambil detail narasi dan rekomendasi satu item interpretasi."
+          },
+          "response": []
+        },
+        {
+          "name": "Perbarui Narasi Interpretasi & Rekomendasi",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interpretasi\": [\n    {\n      \"target_id\": 1,\n      \"deskripsi\": \"Menunjukkan adanya gejala keluhan fisik yang perlu perhatian berkala.\",\n      \"rekomendasi\": \"Diskusikan dengan guru kelas dan pantau kondisi anak dalam 2 minggu ke depan.\",\n      \"deskripsi_belum_memenuhi\": \"Kondisi fisik anak terpantau dalam batas wajar.\",\n      \"rekomendasi_belum_memenuhi\": \"Pertahankan pola hidup sehat dan komunikasi terbuka bersama anak.\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/super-admin/tes-skrining/{{tesId}}/interpretasi",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "super-admin", "tes-skrining", "{{tesId}}", "interpretasi"]
+            },
+            "description": "Menyimpan pembaruan teks deskripsi dan rekomendasi hasil."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "09. Alur Publik Skrining ABK (Orang Tua)",
+      "item": [
+        {
+          "name": "1. Validasi Kode Sesi",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kode\": \"ABC123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/public/skrining/sesi/validasi",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "public", "skrining", "sesi", "validasi"]
+            },
+            "description": "Orang tua memasukkan kode sesi skrining (misal: ABC123). Mengembalikan status sesi dan info nama sekolah."
+          },
+          "response": []
+        },
+        {
+          "name": "2. Cari Data Siswa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/skrining/sesi/{{sesiKode}}/siswa?search=Demo",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "public", "skrining", "sesi", "{{sesiKode}}", "siswa"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "Demo"
+                }
+              ]
+            },
+            "description": "Mencari data anak berdasarkan nama. Hanya mengembalikan nama dan kelas tanpa membocorkan NISN/tanggal lahir."
+          },
+          "response": []
+        },
+        {
+          "name": "3. Konfirmasi Data Siswa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/skrining/sesi/{{sesiKode}}/siswa/{{siswaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "public", "skrining", "sesi", "{{sesiKode}}", "siswa", "{{siswaId}}"]
+            },
+            "description": "Konfirmasi identitas anak sebelum memulai pengisian."
+          },
+          "response": []
+        },
+        {
+          "name": "4. Mulai Skrining (Persetujuan Responden)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "    var json = pm.response.json();",
+                  "    if (json.data && json.data.token) {",
+                  "        pm.collectionVariables.set('tokenSkrining', json.data.token);",
+                  "        console.log('tokenSkrining otomatis disimpan:', json.data.token);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kode\": \"ABC123\",\n  \"siswa_id\": 1,\n  \"nama_responden\": \"Budi Santoso\",\n  \"hubungan\": \"Ayah Kandung\",\n  \"nomor_kontak\": \"08123456789\",\n  \"setuju\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/public/skrining/mulai",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "public", "skrining", "mulai"]
+            },
+            "description": "Merekam persetujuan orang tua dan menghasilkan token pengerjaan (tokenSkrining)."
+          },
+          "response": []
+        },
+        {
+          "name": "5. Ambil Butir Soal Level 1",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/skrining/{{tokenSkrining}}/pertanyaan",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "public", "skrining", "{{tokenSkrining}}", "pertanyaan"]
+            },
+            "description": "Mengambil seluruh butir pertanyaan Level 1 beserta opsi jawaban dan status jawaban tersimpan."
+          },
+          "response": []
+        },
+        {
+          "name": "6. Simpan Jawaban Butir (Autosave)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pertanyaan_id\": 1,\n  \"opsi_jawaban_id\": 3\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/public/skrining/{{tokenSkrining}}/jawaban",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "public", "skrining", "{{tokenSkrining}}", "jawaban"]
+            },
+            "description": "Menyimpan jawaban per butir secara real-time (autosave)."
+          },
+          "response": []
+        },
+        {
+          "name": "7. Submit Level 1 & Evaluasi Ambang Batas",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/skrining/{{tokenSkrining}}/submit-level-1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "public", "skrining", "{{tokenSkrining}}", "submit-level-1"]
+            },
+            "description": "Mengunci jawaban Level 1 dan mengevaluasi apakah ada domain yang melewati ambang batas untuk membuka Level 2."
+          },
+          "response": []
+        },
+        {
+          "name": "8. Dashboard Bagian Lanjutan (Level 2)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/skrining/{{tokenSkrining}}/tindak-lanjut",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "public", "skrining", "{{tokenSkrining}}", "tindak-lanjut"]
+            },
+            "description": "Melihat daftar bagian lanjutan Level 2 yang harus diisi orang tua (dengan label netral: Bagian lanjutan 1, dst)."
+          },
+          "response": []
+        },
+        {
+          "name": "9. Ambil Soal Level 2",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/skrining/{{tokenSkrining}}/tindak-lanjut/{{tesLanjutanId}}/pertanyaan",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "public", "skrining", "{{tokenSkrining}}", "tindak-lanjut", "{{tesLanjutanId}}", "pertanyaan"]
+            },
+            "description": "Mengambil butir pertanyaan Level 2 untuk bagian lanjutan tertentu."
+          },
+          "response": []
+        },
+        {
+          "name": "10. Submit Jawaban Level 2",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/skrining/{{tokenSkrining}}/tindak-lanjut/{{tesLanjutanId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "public", "skrining", "{{tokenSkrining}}", "tindak-lanjut", "{{tesLanjutanId}}", "submit"]
+            },
+            "description": "Mengirimkan jawaban bagian lanjutan Level 2 dan menyelesaikan skrining jika ini bagian terakhir."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
