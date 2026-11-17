@@ -39,9 +39,8 @@ export function createRouter({ config, cekDatabase }) {
   router.use("/super-admin/dashboard", superAdminDashboardRoutes);
   router.use("/admin/dashboard", superAdminDashboardRoutes);
 
-  // Rute Logout Super Admin (Alias eksplisit POST /api/super-admin/logout & /api/admin/logout)
+  // Rute Logout Super Admin (Hanya gunakan prefix eksplisit /super-admin/logout)
   router.post("/super-admin/logout", logoutSuperAdmin);
-  router.post("/admin/logout", logoutSuperAdmin);
 
   router.get("/health", async (req, res) => {
     const timestamp = new Date().toISOString();

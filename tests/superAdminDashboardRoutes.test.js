@@ -312,21 +312,14 @@ test("9. POST /api/super-admin/logout berhasil mengakhiri sesi Super Admin dan m
   });
 });
 
-// 10. Logout: POST /api/admin/logout (alias) berhasil membersihkan cookie (200)
-test("10. POST /api/admin/logout (alias) berhasil mengakhiri sesi dan membersihkan cookie", async () => {
+// 10. Logout: POST /api/admin/logout tidak terdaftar (404) karena rute Super Admin eksklusif di /super-admin/logout
+test("10. POST /api/admin/logout mengembalikan 404 karena rute Super Admin eksklusif di /super-admin/logout", async () => {
   await denganServer(async (baseUrl) => {
     const res = await fetch(`${baseUrl}/api/admin/logout`, {
       method: "POST"
     });
 
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.success, true);
-    assert.match(body.message, /Logout berhasil. Sesi Super Admin telah diakhiri./);
-
-    const setCookie = res.headers.get("set-cookie");
-    assert.ok(setCookie);
-    assert.match(setCookie, /token=;/);
+    assert.equal(res.status, 404);
   });
 });
 
