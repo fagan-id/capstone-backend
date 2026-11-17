@@ -181,26 +181,17 @@ test("3. GET /api/super-admin/dashboard sukses mengembalikan statistik dan aktiv
   }
 });
 
-// 4. Dashboard: Rute alias /api/admin/dashboard sukses
-test("4. GET /api/admin/dashboard (alias) sukses mengembalikan data dashboard", async () => {
+// 4. Dashboard: Rute /api/admin/dashboard tidak terdaftar (404) karena rute Super Admin eksklusif di /super-admin/dashboard
+test("4. GET /api/admin/dashboard mengembalikan 404 karena rute dialihkan eksklusif ke /super-admin/dashboard", async () => {
   const tokenAdmin = buatTestToken("SUPER_ADMIN", 1, "admin@skriningabk.id");
-  const restoreMock = pasangMockPrismaDashboard();
 
-  try {
-    await denganServer(async (baseUrl) => {
-      const res = await fetch(`${baseUrl}/api/admin/dashboard`, {
-        headers: { Authorization: `Bearer ${tokenAdmin}` }
-      });
-
-      assert.equal(res.status, 200);
-      const body = await res.json();
-      assert.equal(body.success, true);
-      assert.ok(body.data.statistik);
-      assert.equal(body.data.statistik.total_sekolah, 24);
+  await denganServer(async (baseUrl) => {
+    const res = await fetch(`${baseUrl}/api/admin/dashboard`, {
+      headers: { Authorization: `Bearer ${tokenAdmin}` }
     });
-  } finally {
-    restoreMock();
-  }
+
+    assert.equal(res.status, 404);
+  });
 });
 
 // 5. Dashboard: Paginasi kustom (page=2, limit=2)
@@ -287,51 +278,30 @@ test("8. POST /api/auth/logout oleh Super Admin berhasil mengakhiri sesi dan mem
   });
 });
 
-// 9. Logout: POST /api/super-admin/logout berhasil membersihkan cookie (200)
-test("9. POST /api/super-admin/logout berhasil mengakhiri sesi Super Admin dan membersihkan cookie", async () => {
-  const tokenAdmin = buatTestToken("SUPER_ADMIN", 1, "admin@skriningabk.id");
-
+// 9. Logout: Rute tersentralisasi di /api/auth/logout sehingga /api/super-admin/logout mengembalikan 404
+test("9. POST /api/super-admin/logout mengembalikan 404 karena logout tersentralisasi di /api/auth/logout", async () => {
   await denganServer(async (baseUrl) => {
     const res = await fetch(`${baseUrl}/api/super-admin/logout`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${tokenAdmin}`,
-        Cookie: `token=${tokenAdmin}`
-      }
+      method: "POST"
     });
 
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.success, true);
-    assert.match(body.message, /Logout berhasil. Sesi Super Admin telah diakhiri./);
-
-    // Verifikasi header Set-Cookie membersihkan token
-    const setCookie = res.headers.get("set-cookie");
-    assert.ok(setCookie);
-    assert.match(setCookie, /token=;/);
+    assert.equal(res.status, 404);
   });
 });
 
-// 10. Logout: POST /api/admin/logout (alias) berhasil membersihkan cookie (200)
-test("10. POST /api/admin/logout (alias) berhasil mengakhiri sesi dan membersihkan cookie", async () => {
+// 10. Logout: POST /api/admin/logout tidak terdaftar (404)
+test("10. POST /api/admin/logout mengembalikan 404", async () => {
   await denganServer(async (baseUrl) => {
     const res = await fetch(`${baseUrl}/api/admin/logout`, {
       method: "POST"
     });
 
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.success, true);
-    assert.match(body.message, /Logout berhasil. Sesi Super Admin telah diakhiri./);
-
-    const setCookie = res.headers.get("set-cookie");
-    assert.ok(setCookie);
-    assert.match(setCookie, /token=;/);
+    assert.equal(res.status, 404);
   });
 });
 
-// 11. Logout: POST /api/super-admin/dashboard/logout berhasil dengan token SUPER_ADMIN
-test("11. POST /api/super-admin/dashboard/logout berhasil untuk Super Admin", async () => {
+// 11. Dashboard: POST /api/super-admin/dashboard/logout tidak terdaftar (404) karena dashboard murni data agregat
+test("11. POST /api/super-admin/dashboard/logout mengembalikan 404 karena fitur logout berada di modul auth", async () => {
   const tokenAdmin = buatTestToken("SUPER_ADMIN", 1, "admin@skriningabk.id");
 
   await denganServer(async (baseUrl) => {
@@ -340,9 +310,6 @@ test("11. POST /api/super-admin/dashboard/logout berhasil untuk Super Admin", as
       headers: { Authorization: `Bearer ${tokenAdmin}` }
     });
 
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.success, true);
-    assert.match(body.message, /Logout berhasil. Sesi Super Admin telah diakhiri./);
+    assert.equal(res.status, 404);
   });
 });

@@ -11,7 +11,6 @@ import skriningOrangTuaRoutes from "./public/skriningOrangTua.js";
 import superAdminKelolaSekolahRoutes from "./superAdmin/superAdminKelolaSekolah.js";
 import superAdminTesSkriningRoutes from "./superAdmin/superAdminTesSkrining.js";
 import superAdminDashboardRoutes from "./superAdmin/superAdminDashboard.js";
-import { logoutSuperAdmin } from "../controllers/superAdmin/superAdminDashboard.js";
 
 /**
  * Membuat router API.
@@ -29,19 +28,12 @@ export function createRouter({ config, cekDatabase }) {
 
   // Rute Super Admin - Kelola Sekolah (CRU tanpa Delete)
   router.use("/super-admin/sekolah", superAdminKelolaSekolahRoutes);
-  router.use("/admin/sekolah", superAdminKelolaSekolahRoutes);
 
   // Rute Super Admin - Manajemen Tes Skrining (CRUD)
   router.use("/super-admin/tes-skrining", superAdminTesSkriningRoutes);
-  router.use("/admin/tes-skrining", superAdminTesSkriningRoutes);
 
   // Rute Super Admin - Dashboard
   router.use("/super-admin/dashboard", superAdminDashboardRoutes);
-  router.use("/admin/dashboard", superAdminDashboardRoutes);
-
-  // Rute Logout Super Admin (Alias eksplisit POST /api/super-admin/logout & /api/admin/logout)
-  router.post("/super-admin/logout", logoutSuperAdmin);
-  router.post("/admin/logout", logoutSuperAdmin);
 
   router.get("/health", async (req, res) => {
     const timestamp = new Date().toISOString();
