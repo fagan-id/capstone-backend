@@ -6,6 +6,7 @@
 import jwt from "jsonwebtoken";
 import { config } from "../config/index.js";
 import AppError from "../utils/appError.js";
+import { prisma } from "../lib/prisma.js";
 
 /**
  * Middleware untuk memverifikasi keabsahan JWT token.
@@ -50,4 +51,23 @@ export function authorizeRoles(...roles) {
     }
     return next();
   };
+}
+
+/**
+ * Menolak sekolah yang sudah dinonaktifkan meskipun JWT-nya masih berlaku.
+ * Dipasang setelah verifyToken + authorizeRoles("SEKOLAH").
+ */
+export async function cekSekolahAktif(req, res, next) {
+  try {
+    const sekolah = await prisma.sekolah.findUnique({
+      where: { id: req.user.id },
+      select: { id: true, aktif: true }
+    });
+    if (!sekolah || !sekolah.aktif) {
+      return next(AppError.forbidden("Akun sekolah dinonaktifkan. Silakan hubungi Super Admin."));
+    }
+    return next();
+  } catch (err) {
+    return next(err);
+  }
 }
