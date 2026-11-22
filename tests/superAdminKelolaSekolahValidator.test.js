@@ -75,11 +75,18 @@ test("validasiTambahSekolah memvalidasi input wajib", () => {
     /Password minimal 6 karakter/
   );
 
-  // Gagal jika NPSN disediakan tapi bukan 8 karakter
-  assert.throws(
-    () => validasiTambahSekolah({ nama: "SD Test", email: "admin@test.com", password: "password123", npsn: "123" }),
-    /NPSN harus terdiri dari 8 karakter/
-  );
+  // Gagal jika NPSN disediakan tapi bukan 8 digit angka
+  const dasar = { nama: "SD Test", email: "admin@test.com", password: "password123" };
+  assert.throws(() => validasiTambahSekolah({ ...dasar, npsn: "123" }), /NPSN harus terdiri dari 8 digit angka/);
+  assert.throws(() => validasiTambahSekolah({ ...dasar, npsn: "ABCD-123" }), /NPSN harus terdiri dari 8 digit angka/);
+  assert.equal(validasiTambahSekolah({ ...dasar, npsn: " 20104567 " }).npsn, "20104567");
+
+  // Status aktif: default true, string true/false/1/0 diterima, nilai lain ditolak
+  assert.equal(validasiTambahSekolah(dasar).aktif, true);
+  assert.equal(validasiTambahSekolah({ ...dasar, aktif: "false" }).aktif, false);
+  assert.equal(validasiTambahSekolah({ ...dasar, aktif: "1" }).aktif, true);
+  assert.throws(() => validasiTambahSekolah({ ...dasar, aktif: "aktif" }), /harus bernilai true atau false/);
+  assert.throws(() => validasiTambahSekolah({ ...dasar, aktif: 1 }), /harus bernilai true atau false/);
 
   // Gagal jika username mengandung @
   assert.throws(
@@ -117,9 +124,30 @@ test("validasiUpdateSekolah memvalidasi pembaruan parsial", () => {
   const passwordBaru = validasiUpdateSekolah({ password: "NewPassword123!" });
   assert.equal(passwordBaru.password, "NewPassword123!");
 
+  // Password disimpan apa adanya (login tidak men-trim), spasi saja tetap dianggap kosong
+  assert.equal(validasiUpdateSekolah({ password: " Rahasia123 " }).password, " Rahasia123 ");
+  assert.equal(validasiUpdateSekolah({ password: "   " }).password, undefined);
+  assert.equal(
+    validasiTambahSekolah({ nama: "SD Test", email: "a@test.com", password: " Rahasia123 " }).password,
+    " Rahasia123 "
+  );
+  assert.throws(
+    () => validasiTambahSekolah({ nama: "SD Test", email: "a@test.com", password: "   " }),
+    /Password admin sekolah wajib diisi/
+  );
+
   // Password terlalu pendek ditolak
   assert.throws(() => validasiUpdateSekolah({ password: "123" }), /Password baru minimal 6 karakter/);
 
   // Email tidak valid ditolak
   assert.throws(() => validasiUpdateSekolah({ email: "invalid-email" }), /Format email admin sekolah tidak valid/);
+
+  // Typo status tidak boleh diam-diam menonaktifkan sekolah
+  assert.throws(() => validasiUpdateSekolah({ aktif: "yes" }), /harus bernilai true atau false/);
+  assert.equal(validasiUpdateSekolah({ aktif: "0" }).aktif, false);
+  assert.equal(validasiUpdateSekolah({ aktif: null }).aktif, undefined);
+
+  // NPSN harus angka
+  assert.throws(() => validasiUpdateSekolah({ npsn: "1234567a" }), /NPSN harus terdiri dari 8 digit angka/);
+  assert.equal(validasiUpdateSekolah({ npsn: "20104567" }).npsn, "20104567");
 });

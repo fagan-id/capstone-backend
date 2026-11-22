@@ -22,6 +22,32 @@ function teksWajib(nilai, pesan) {
 }
 
 /**
+ * Mengubah nilai status sekolah ke boolean; menolak nilai yang ambigu agar typo tidak menonaktifkan sekolah.
+ * @param {*} nilai
+ * @returns {boolean}
+ */
+function parseAktif(nilai) {
+  if (typeof nilai === "boolean") return nilai;
+  const a = typeof nilai === "string" ? nilai.trim().toLowerCase() : "";
+  if (a === "true" || a === "1") return true;
+  if (a === "false" || a === "0") return false;
+  throw AppError.badRequest("Status sekolah (aktif) harus bernilai true atau false.");
+}
+
+/**
+ * Memastikan NPSN tepat 8 digit angka.
+ * @param {*} nilai
+ * @returns {string}
+ */
+function parseNpsn(nilai) {
+  const npsn = String(nilai).trim();
+  if (!/^\d{8}$/.test(npsn)) {
+    throw AppError.badRequest("NPSN harus terdiri dari 8 digit angka.");
+  }
+  return npsn;
+}
+
+/**
  * Validasi ID numerik positif untuk parameter URL (sekolah_id).
  * @param {*} nilai
  * @returns {number}
@@ -113,27 +139,18 @@ export function validasiTambahSekolah(body = {}) {
     throw AppError.badRequest("Email maksimal 191 karakter.");
   }
 
-  const password = teksWajib(data.password, "Password admin sekolah wajib diisi.");
+  teksWajib(data.password, "Password admin sekolah wajib diisi.");
+  // Tidak di-trim: login membandingkan password apa adanya.
+  const password = data.password;
   if (password.length < 6) {
     throw AppError.badRequest("Password minimal 6 karakter.");
   }
 
-  let aktif = true;
-  if (data.aktif !== undefined) {
-    if (typeof data.aktif === "boolean") {
-      aktif = data.aktif;
-    } else if (typeof data.aktif === "string") {
-      const a = data.aktif.trim().toLowerCase();
-      aktif = a === "true" || a === "1";
-    }
-  }
+  const aktif = data.aktif === undefined || data.aktif === null ? true : parseAktif(data.aktif);
 
   let npsn = undefined;
   if (data.npsn !== undefined && data.npsn !== null && String(data.npsn).trim() !== "") {
-    npsn = String(data.npsn).trim();
-    if (npsn.length !== 8) {
-      throw AppError.badRequest("NPSN harus terdiri dari 8 karakter.");
-    }
+    npsn = parseNpsn(data.npsn);
   }
 
   let username = undefined;
@@ -215,28 +232,20 @@ export function validasiUpdateSekolah(body = {}) {
   }
 
   if (data.password !== undefined && data.password !== null && String(data.password).trim() !== "") {
-    const password = String(data.password).trim();
+    // Tidak di-trim: login membandingkan password apa adanya.
+    const password = String(data.password);
     if (password.length < 6) {
       throw AppError.badRequest("Password baru minimal 6 karakter.");
     }
     hasil.password = password;
   }
 
-  if (data.aktif !== undefined) {
-    if (typeof data.aktif === "boolean") {
-      hasil.aktif = data.aktif;
-    } else if (typeof data.aktif === "string") {
-      const a = data.aktif.trim().toLowerCase();
-      hasil.aktif = a === "true" || a === "1";
-    }
+  if (data.aktif !== undefined && data.aktif !== null) {
+    hasil.aktif = parseAktif(data.aktif);
   }
 
   if (data.npsn !== undefined && data.npsn !== null && String(data.npsn).trim() !== "") {
-    const npsn = String(data.npsn).trim();
-    if (npsn.length !== 8) {
-      throw AppError.badRequest("NPSN harus terdiri dari 8 karakter.");
-    }
-    hasil.npsn = npsn;
+    hasil.npsn = parseNpsn(data.npsn);
   }
 
   if (data.username !== undefined && data.username !== null && String(data.username).trim() !== "") {

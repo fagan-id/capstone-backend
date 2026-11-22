@@ -353,7 +353,7 @@ export async function updateSekolah(db, id, data) {
 
   // 5. Ganti password jika diisi dan bukan string kosong
   if (data.password && typeof data.password === "string" && data.password.trim() !== "") {
-    updateData.password_hash = await bcrypt.hash(data.password.trim(), 10);
+    updateData.password_hash = await bcrypt.hash(data.password, 10);
   }
 
   // 6. Jalankan update di database
