@@ -20,10 +20,10 @@ enum jenis_kelamin {
   P
 }
 
-enum status_tinjauan {
-  belum_ditinjau
-  sudah_ditinjau
-  dirujuk
+enum status_sesi {
+  menunggu
+  aktif
+  selesai
 }
 
 enum tipe_jawaban {
@@ -146,9 +146,8 @@ model sesi_skrining {
   sekolah_id          Int
   nama                String      @db.VarChar(150)
   kode                String      @unique @db.VarChar(20)
-  // Status dihitung dari jendela waktu (src/utils/statusSesi.js), tidak disimpan.
-  waktu_mulai         DateTime    @db.DateTime(3)
-  waktu_selesai       DateTime    @db.DateTime(3)
+  tanggal_pelaksanaan DateTime    @db.Date
+  status              status_sesi
   created_at          DateTime    @default(now())
   updated_at          DateTime    @updatedAt
 
@@ -156,7 +155,6 @@ model sesi_skrining {
   hasil_skrining hasil_skrining[]
 
   @@index([sekolah_id])
-  @@index([sekolah_id, waktu_mulai])
 }
 
 model pertanyaan {
@@ -231,22 +229,9 @@ model hasil_skrining {
   jawaban_siswa  jawaban_siswa[]
   hasil_kategori hasil_kategori[]
   hasil_tes      hasil_tes[]
-  tinjauan       tinjauan?
 
   @@unique([siswa_id, sesi_skrining_id])
   @@index([sesi_skrining_id])
-}
-
-/// Tindak lanjut sekolah atas satu hasil. Tanpa baris berarti `belum_ditinjau`.
-model tinjauan {
-  id                Int             @id @default(autoincrement())
-  hasil_skrining_id Int             @unique
-  status            status_tinjauan
-  catatan           String?         @db.Text
-  created_at        DateTime        @default(now())
-  updated_at        DateTime        @updatedAt
-
-  hasil_skrining hasil_skrining @relation(fields: [hasil_skrining_id], references: [id], onDelete: Restrict)
 }
 
 model jawaban_siswa {

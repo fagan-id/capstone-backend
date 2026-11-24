@@ -59,7 +59,7 @@ function pasangMockPrismaDashboard() {
   ];
 
   prisma.sesi_skrining.count = async ({ where } = {}) => {
-    if (where?.waktu_mulai?.lte && where?.waktu_selesai?.gt) return 8;
+    if (where?.status === "aktif") return 8;
     return 12;
   };
   prisma.sesi_skrining.findMany = async () => [

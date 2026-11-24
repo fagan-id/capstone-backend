@@ -7,7 +7,6 @@
 
 import { randomUUID } from "node:crypto";
 import AppError from "../../utils/appError.js";
-import { statusSesi } from "../../utils/statusSesi.js";
 import { nilaiKategori } from "./penilaianSkrining.js";
 
 /** Label netral untuk peserta; nama domain tidak boleh terbaca orang tua (D37). */
@@ -28,22 +27,20 @@ export async function validasiSesi(db, kode) {
 
   if (!sesi) throw AppError.notFound(`Sesi dengan kode "${kode}" tidak ditemukan.`);
 
-  const status = statusSesi(sesi);
-  if (status !== "aktif") {
+  if (sesi.status !== "aktif") {
     const pesan =
-      status === "menunggu"
+      sesi.status === "menunggu"
         ? "Sesi ini belum dimulai. Silakan hubungi pihak sekolah."
         : "Sesi skrining ini sudah ditutup.";
-    throw AppError.badRequest(pesan, { status });
+    throw AppError.badRequest(pesan, { status: sesi.status });
   }
 
   return {
     id: sesi.id,
     kode: sesi.kode,
     nama: sesi.nama,
-    status,
-    waktu_mulai: sesi.waktu_mulai,
-    waktu_selesai: sesi.waktu_selesai,
+    status: sesi.status,
+    tanggal_pelaksanaan: sesi.tanggal_pelaksanaan,
     sekolah: {
       id: sesi.sekolah.id,
       nama: sesi.sekolah.nama,

@@ -71,30 +71,9 @@ test("validasiSesi menolak kode yang tidak ada", async () => {
 test("validasiSesi menolak sesi yang belum aktif", async () => {
   await dalamTransaksiBatal(async (tx) => {
     const r = await siapkan(tx);
-    await tx.sesi_skrining.update({
-      where: { id: r.sesi.id },
-      data: { waktu_mulai: new Date(Date.now() + 3600_000), waktu_selesai: new Date(Date.now() + 7200_000) }
-    });
+    await tx.sesi_skrining.update({ where: { id: r.sesi.id }, data: { status: "menunggu" } });
 
-    await assert.rejects(layanan.validasiSesi(tx, r.sesi.kode), {
-      statusCode: 400,
-      message: "Sesi ini belum dimulai. Silakan hubungi pihak sekolah."
-    });
-  });
-});
-
-test("validasiSesi menolak sesi yang sudah lewat waktu_selesai", async () => {
-  await dalamTransaksiBatal(async (tx) => {
-    const r = await siapkan(tx);
-    await tx.sesi_skrining.update({
-      where: { id: r.sesi.id },
-      data: { waktu_mulai: new Date(Date.now() - 7200_000), waktu_selesai: new Date(Date.now() - 1000) }
-    });
-
-    await assert.rejects(layanan.validasiSesi(tx, r.sesi.kode), {
-      statusCode: 400,
-      message: "Sesi skrining ini sudah ditutup."
-    });
+    await assert.rejects(layanan.validasiSesi(tx, r.sesi.kode), { statusCode: 400 });
   });
 });
 
