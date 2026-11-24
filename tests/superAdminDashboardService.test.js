@@ -50,7 +50,7 @@ function createMockDb(overrides = {}) {
     },
     sesi_skrining: {
       count: async ({ where } = {}) => {
-        if (where?.status === "aktif") return 8;
+        if (where?.waktu_mulai?.lte && where?.waktu_selesai?.gt) return 8;
         return 12;
       },
       findMany: async () => defaultSesiList

@@ -126,7 +126,7 @@ const TES = [
  *   siswa: Array<{ nisn: string, nama: string, tanggal_lahir: Date, jenis_kelamin: "L"|"P" }>,
  *   kategori: typeof KATEGORI,
  *   tes: typeof TES,
- *   sesi: { nama: string, kode: string, tanggal_pelaksanaan: Date, status: "aktif" }
+ *   sesi: { nama: string, kode: string, waktu_mulai: Date, waktu_selesai: Date }
  * }>}
  */
 export async function buatDataSeed(env) {
@@ -167,8 +167,8 @@ export async function buatDataSeed(env) {
     sesi: {
       nama: "Skrining Kelas 4 TA 2026/2027",
       kode: "ABC123",
-      tanggal_pelaksanaan: new Date("2026-11-10"),
-      status: "aktif"
+      waktu_mulai: new Date(),
+      waktu_selesai: new Date(Date.now() + 30 * 24 * 3600_000)
     }
   };
 }

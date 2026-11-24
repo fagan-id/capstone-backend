@@ -76,8 +76,8 @@ async function buatRangkaian(tx) {
       sekolah_id: sekolah.id,
       nama: "Skrining Kelas 5",
       kode: `UJI${Date.now()}`,
-      tanggal_pelaksanaan: new Date("2026-11-10"),
-      status: "aktif"
+      waktu_mulai: new Date(Date.now() - 3600_000),
+      waktu_selesai: new Date(Date.now() + 3600_000)
     }
   });
 
@@ -254,8 +254,8 @@ test("kode sesi unik", async () => {
           sekolah_id: r.sekolah.id,
           nama: "Sesi Lain",
           kode: r.sesi.kode,
-          tanggal_pelaksanaan: new Date("2026-12-01"),
-          status: "menunggu"
+          waktu_mulai: new Date("2026-12-01T00:00:00Z"),
+          waktu_selesai: new Date("2026-12-02T00:00:00Z")
         }
       }),
       { code: "P2002" }

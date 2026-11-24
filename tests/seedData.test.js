@@ -120,6 +120,8 @@ test("setiap instrumen level 2 dipakai oleh satu domain", async () => {
 test("buatDataSeed menyiapkan sesi skrining aktif", async () => {
   const { sesi } = await buatDataSeed({ SEED_PASSWORD: "rahasia123" });
 
-  assert.equal(sesi.status, "aktif");
+  const now = Date.now();
+  assert.ok(sesi.waktu_mulai.getTime() <= now);
+  assert.ok(sesi.waktu_selesai.getTime() > now);
   assert.ok(sesi.kode.length > 0);
 });

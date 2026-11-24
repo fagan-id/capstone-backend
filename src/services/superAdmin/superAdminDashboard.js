@@ -3,6 +3,8 @@
  * Menghitung ringkasan statistik KPI dan menyusun feed aktivitas platform terbaru.
  */
 
+import { filterSesiAktif } from "../../utils/statusSesi.js";
+
 /**
  * Format tanggal ramah pengguna (misal: "24 Sep 2026").
  * @param {Date|string} date
@@ -37,7 +39,7 @@ export async function getDashboardData(db, query = { page: 1, limit: 5 }) {
       db.sekolah ? db.sekolah.count() : 0,
       db.sekolah ? db.sekolah.count({ where: { aktif: true } }) : 0,
       db.sekolah ? db.sekolah.count({ where: { aktif: false } }) : 0,
-      db.sesi_skrining ? db.sesi_skrining.count({ where: { status: "aktif" } }) : 0,
+      db.sesi_skrining ? db.sesi_skrining.count({ where: filterSesiAktif() }) : 0,
       db.sesi_skrining ? db.sesi_skrining.count() : 0,
       db.siswa ? db.siswa.count() : 0
     ]);
@@ -146,7 +148,6 @@ export async function getDashboardData(db, query = { page: 1, limit: 5 }) {
           id: true,
           nama: true,
           created_at: true,
-          status: true,
           sekolah: { select: { nama: true } }
         },
         orderBy: { created_at: "desc" },

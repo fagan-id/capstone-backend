@@ -39,8 +39,8 @@ test("DB: getDaftarSekolah menghitung total sesi skrining secara agregat dari da
           sekolah_id: s1.id,
           nama: `Sesi ${i}`,
           kode: `SKM00${i}`,
-          tanggal_pelaksanaan: new Date(),
-          status: "aktif"
+          waktu_mulai: new Date(),
+          waktu_selesai: new Date(Date.now() + 3600_000)
         }
       });
     }
@@ -50,8 +50,8 @@ test("DB: getDaftarSekolah menghitung total sesi skrining secara agregat dari da
         sekolah_id: s2.id,
         nama: "Sesi 1",
         kode: `ALH001`,
-        tanggal_pelaksanaan: new Date(),
-        status: "menunggu"
+        waktu_mulai: new Date(Date.now() + 3600_000),
+        waktu_selesai: new Date(Date.now() + 7200_000)
       }
     });
 
