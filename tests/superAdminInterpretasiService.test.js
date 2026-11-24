@@ -322,7 +322,13 @@ test("submitLevel1 menyimpan snapshot deskripsi dan rekomendasi sesuai kondisi h
   let savedSnapshot = null;
   const db = {
     hasil_skrining: {
-      findUnique: async () => ({ id: 100, selesai: false, token: "token-test", siswa: { nama: "Budi" } })
+      findUnique: async () => ({
+        id: 100,
+        selesai: false,
+        token: "token-test",
+        siswa: { nama: "Budi" },
+        sesi_skrining: { tes_skrining_id: 1 }
+      })
     },
     hasil_kategori: {
       count: async () => 0,
@@ -331,7 +337,7 @@ test("submitLevel1 menyimpan snapshot deskripsi dan rekomendasi sesuai kondisi h
       }
     },
     tes_skrining: {
-      findFirst: async () => ({ id: 1, level: 1 })
+      findUnique: async () => ({ id: 1, level: 1 })
     },
     pertanyaan: {
       findMany: async () => [

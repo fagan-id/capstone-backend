@@ -136,6 +136,7 @@ model tes_skrining {
   kategori_asesmen kategori_asesmen[]
   hasil_tes        hasil_tes[]
   rentang_penilaian rentang_penilaian[]
+  sesi_skrining    sesi_skrining[]
 
   @@index([super_admin_id])
   @@index([level, aktif])
@@ -148,13 +149,17 @@ model sesi_skrining {
   kode                String      @unique @db.VarChar(20)
   tanggal_pelaksanaan DateTime    @db.Date
   status              status_sesi
+  // Tes Level 1 yang dipilih sekolah saat membuat sesi; tidak berubah setelahnya.
+  tes_skrining_id     Int
   created_at          DateTime    @default(now())
   updated_at          DateTime    @updatedAt
 
   sekolah        sekolah          @relation(fields: [sekolah_id], references: [id], onDelete: Restrict)
+  tes_skrining   tes_skrining     @relation(fields: [tes_skrining_id], references: [id], onDelete: Restrict)
   hasil_skrining hasil_skrining[]
 
   @@index([sekolah_id])
+  @@index([tes_skrining_id])
 }
 
 model pertanyaan {

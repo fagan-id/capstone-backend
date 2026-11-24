@@ -208,12 +208,6 @@ export async function jalankanSeed(db, data) {
     });
   }
 
-  await db.sesi_skrining.upsert({
-    where: { kode: data.sesi.kode },
-    update: {},
-    create: { ...data.sesi, sekolah_id: sekolah.id }
-  });
-
   // Instrumen lebih dulu: kategori_asesmen menunjuk instrumen Level 2-nya.
   // shortcut: nama instrumen tidak unik di skema (nama yang sama boleh beda jenjang), jadi
   // idempotensi seed dicek manual. Ganti ke upsert bila nanti ada kunci unik yang tepat.
@@ -257,4 +251,11 @@ export async function jalankanSeed(db, data) {
       }
     }
   }
+
+  const tesLevel1 = data.tes.find((t) => t.level === 1);
+  await db.sesi_skrining.upsert({
+    where: { kode: data.sesi.kode },
+    update: {},
+    create: { ...data.sesi, sekolah_id: sekolah.id, tes_skrining_id: idTes.get(tesLevel1.nama) }
+  });
 }

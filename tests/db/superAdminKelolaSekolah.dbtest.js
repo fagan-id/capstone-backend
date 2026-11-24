@@ -32,6 +32,13 @@ test("DB: getDaftarSekolah menghitung total sesi skrining secara agregat dari da
       }
     });
 
+    const admin = await tx.super_admin.create({
+      data: { nama: "Admin Uji", email: "admin-kelola@uji.test", password_hash: "hash" }
+    });
+    const tes = await tx.tes_skrining.create({
+      data: { super_admin_id: admin.id, nama: "Tes Uji", level: 1, jenjang: "SD", deskripsi: "Uji" }
+    });
+
     // 2. Buat 3 sesi untuk sekolah 1 dan 1 sesi untuk sekolah 2
     for (let i = 1; i <= 3; i++) {
       await tx.sesi_skrining.create({
@@ -40,7 +47,8 @@ test("DB: getDaftarSekolah menghitung total sesi skrining secara agregat dari da
           nama: `Sesi ${i}`,
           kode: `SKM00${i}`,
           tanggal_pelaksanaan: new Date(),
-          status: "aktif"
+          status: "aktif",
+          tes_skrining_id: tes.id
         }
       });
     }
@@ -51,7 +59,8 @@ test("DB: getDaftarSekolah menghitung total sesi skrining secara agregat dari da
         nama: "Sesi 1",
         kode: `ALH001`,
         tanggal_pelaksanaan: new Date(),
-        status: "menunggu"
+        status: "menunggu",
+        tes_skrining_id: tes.id
       }
     });
 

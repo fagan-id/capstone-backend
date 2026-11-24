@@ -40,6 +40,7 @@ export async function validasiSesi(db, kode) {
     kode: sesi.kode,
     nama: sesi.nama,
     status: sesi.status,
+    tes_skrining_id: sesi.tes_skrining_id,
     tanggal_pelaksanaan: sesi.tanggal_pelaksanaan,
     sekolah: {
       id: sesi.sekolah.id,
@@ -136,7 +137,7 @@ export async function mulaiSkrining(db, masukan) {
     };
   }
 
-  const level1 = await ambilLevel1(db);
+  const level1 = await ambilTesSesi(db, sesi.tes_skrining_id);
   const sekarang = new Date();
 
   const hasil = await db.hasil_skrining.create({
@@ -160,14 +161,13 @@ export async function mulaiSkrining(db, masukan) {
 }
 
 /**
- * Instrumen Level 1 yang aktif. Dipilih lewat `level`, bukan nama (D43).
+ * Instrumen Level 1 milik sesi. Tidak disaring `aktif`, supaya peserta sesi yang sedang berjalan
+ * tidak terputus bila tesnya dinonaktifkan Super Admin.
  * @param {object} db
+ * @param {number} tes_skrining_id
  */
-async function ambilLevel1(db) {
-  const level1 = await db.tes_skrining.findFirst({
-    where: { level: 1, aktif: true },
-    orderBy: { id: "asc" }
-  });
+async function ambilTesSesi(db, tes_skrining_id) {
+  const level1 = await db.tes_skrining.findUnique({ where: { id: tes_skrining_id } });
 
   if (!level1) throw AppError.notFound("Instrumen skrining awal belum tersedia.");
   return level1;
@@ -181,7 +181,10 @@ async function ambilLevel1(db) {
 async function ambilPercobaan(db, token) {
   const hasil = await db.hasil_skrining.findUnique({
     where: { token },
-    include: { siswa: { select: { nama: true } } }
+    include: {
+      siswa: { select: { nama: true } },
+      sesi_skrining: { select: { tes_skrining_id: true } }
+    }
   });
 
   if (!hasil) throw AppError.notFound("Sesi pengerjaan tidak ditemukan atau tautannya tidak berlaku.");
@@ -236,7 +239,7 @@ async function susunPertanyaan(db, hasil_skrining_id, tes_skrining_id) {
  */
 export async function getPertanyaanLevel1(db, token) {
   const hasil = await ambilPercobaan(db, token);
-  const level1 = await ambilLevel1(db);
+  const level1 = await ambilTesSesi(db, hasil.sesi_skrining.tes_skrining_id);
   const soal = await susunPertanyaan(db, hasil.id, level1.id);
 
   return {
@@ -334,7 +337,7 @@ export async function submitLevel1(db, token) {
   const sudahDinilai = await db.hasil_kategori.count({ where: { hasil_skrining_id: hasil.id } });
   if (sudahDinilai > 0) throw AppError.badRequest("Skrining awal ini sudah dikirim sebelumnya.");
 
-  const level1 = await ambilLevel1(db);
+  const level1 = await ambilTesSesi(db, hasil.sesi_skrining.tes_skrining_id);
   const soal = await susunPertanyaan(db, hasil.id, level1.id);
   pastikanLengkap(soal, "Harap lengkapi seluruh pertanyaan sebelum mengirimkan jawaban.");
 

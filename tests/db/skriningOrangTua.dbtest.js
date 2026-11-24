@@ -196,6 +196,48 @@ test("mulaiSkrining melanjutkan percobaan yang sama tanpa menduplikasi", async (
   });
 });
 
+test("peserta mendapat tes milik sesi, bukan tes level 1 dengan id terkecil", async () => {
+  await dalamTransaksiBatal(async (tx) => {
+    const r = await siapkan(tx);
+    const admin = await tx.super_admin.findFirst();
+    const tesBaru = await tx.tes_skrining.create({
+      data: { super_admin_id: admin.id, nama: "Tes Level 1 Lain", level: 1, jenjang: "SD", deskripsi: "Uji" }
+    });
+    const butir = await tx.pertanyaan.create({
+      data: {
+        tes_skrining_id: tesBaru.id,
+        kategori_asesmen_id: r.level1.pertanyaan[0].kategori_asesmen_id,
+        teks: "Butir tes lain",
+        tipe_jawaban: "ya_tidak",
+        nomor_urut: 1
+      }
+    });
+    await tx.opsi_jawaban.create({ data: { pertanyaan_id: butir.id, label: "Ya", teks: "Ya", skor: 2, urutan: 1 } });
+    await tx.sesi_skrining.update({ where: { id: r.sesi.id }, data: { tes_skrining_id: tesBaru.id } });
+
+    const { token } = await mulai(tx, r);
+    const hasil = await layanan.getPertanyaanLevel1(tx, token);
+
+    assert.equal(hasil.tes_skrining_id, tesBaru.id);
+    assert.equal(hasil.total_soal, 1);
+  });
+});
+
+test("sesi tetap memakai tesnya walau tes dinonaktifkan", async () => {
+  await dalamTransaksiBatal(async (tx) => {
+    const r = await siapkan(tx);
+    const { token } = await mulai(tx, r);
+    await tx.tes_skrining.update({ where: { id: r.level1.id }, data: { aktif: false } });
+
+    const soal = await layanan.getPertanyaanLevel1(tx, token);
+    assert.equal(soal.tes_skrining_id, r.level1.id);
+    assert.equal(soal.total_soal, r.level1.pertanyaan.length);
+
+    await isiPenuh(tx, r, token);
+    await layanan.submitLevel1(tx, token);
+  });
+});
+
 test("getPertanyaanLevel1 memuat butir beserta opsi dan jawaban tersimpan", async () => {
   await dalamTransaksiBatal(async (tx) => {
     const r = await siapkan(tx);
