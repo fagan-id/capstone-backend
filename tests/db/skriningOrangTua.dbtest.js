@@ -4,6 +4,7 @@ import { prisma } from "../../src/lib/prisma.js";
 import { buatDataSeed, jalankanSeed } from "../../prisma/seedData.js";
 import { dalamTransaksiBatal } from "./helpers.js";
 import * as layanan from "../../src/services/public/skriningOrangTua.js";
+import * as sesiSekolah from "../../src/services/sekolah/sekolahSesi.js";
 
 after(() => prisma.$disconnect());
 
@@ -235,6 +236,23 @@ test("sesi tetap memakai tesnya walau tes dinonaktifkan", async () => {
 
     await isiPenuh(tx, r, token);
     await layanan.submitLevel1(tx, token);
+  });
+});
+
+test("orang tua yang sudah mulai tetap bisa mengirim setelah sesi diakhiri", async () => {
+  await dalamTransaksiBatal(async (tx) => {
+    const r = await siapkan(tx);
+    const { token } = await mulai(tx, r);
+
+    await sesiSekolah.akhiriSesi(tx, r.sesi.sekolah_id, r.sesi.id);
+
+    await isiPenuh(tx, r, token);
+    await layanan.submitLevel1(tx, token);
+
+    await assert.rejects(mulai(tx, r, r.siswaLain), {
+      statusCode: 400,
+      message: "Sesi skrining ini sudah ditutup."
+    });
   });
 });
 

@@ -11,6 +11,7 @@ import skriningOrangTuaRoutes from "./public/skriningOrangTua.js";
 import superAdminKelolaSekolahRoutes from "./superAdmin/superAdminKelolaSekolah.js";
 import superAdminTesSkriningRoutes from "./superAdmin/superAdminTesSkrining.js";
 import superAdminDashboardRoutes from "./superAdmin/superAdminDashboard.js";
+import superAdminSesiRoutes from "./superAdmin/superAdminSesi.js";
 import sekolahRoutes from "./sekolah/index.js";
 
 /**
@@ -35,6 +36,9 @@ export function createRouter({ config, cekDatabase }) {
 
   // Rute Super Admin - Dashboard
   router.use("/super-admin/dashboard", superAdminDashboardRoutes);
+
+  // Rute Super Admin - Mengakhiri sesi skrining sekolah mana pun
+  router.use("/super-admin/sesi", superAdminSesiRoutes);
 
   // Rute Sekolah (kelas, siswa, sesi, hasil) - hanya akun sekolah aktif
   router.use("/sekolah", sekolahRoutes);
